@@ -1,5 +1,7 @@
-// Parses 2 files with the format "{dexnumber},{name}" on each line into their respective enums
+
+// Parses data files into their respective enums
 //  and functions
+//  TODO: parse response from https://m.bulbapedia.bulbagarden.net/wiki/List_of_Pok%C3%A9mon_by_effort_value_yield_(Generation_IX) in order to gather experience abd effort value constants
 
 use std::*;
 use std::iter::Iterator;
@@ -7,38 +9,53 @@ use std::fs::*;
 use std::io::prelude::*;
 
 fn main() {
+    // real names in English
 	let mut real_names = fs::read_to_string("realnames.txt")
         .unwrap_or_else( |_| { panic!("`realnames.txt` does not exist in directory."); String::new() } )
 		.lines()
 		.map(String::from)
 		.collect::<Vec<String>>();
+
+    // Simplified names without problematic characters
 	let mut enum_names = fs::read_to_string("enumnames.txt")
         .unwrap_or_else( |_| { panic!("`enumnames.txt` does not exist in directory."); String::new() } )
 		.lines()
 		.map(String::from)
 		.collect::<Vec<String>>();
-
-	// HP,Attack,Defense,Sp.Attack,Sp.Defense,Speed
+    
+    // Type 1, Type 2 (if any)
     let mut battle_types = fs::read_to_string("types.txt")
         .unwrap_or_else( |_| { panic!("`types.txt` does not exist in directory."); String::new() } )
 		.lines()
 		.map(String::from)
 		.collect::<Vec<String>>();
+
+	// HP,Attack,Defense,Sp.Attack,Sp.Defense,Speed
 	let mut base_stats = fs::read_to_string("stats.txt")
         .unwrap_or_else( |_| { panic!("`stats.txt` does not exist in directory."); String::new() } )
 		.lines()
 		.map(String::from)
 		.collect::<Vec<String>>();
 
-	let mut pimpl = fs::File::create("mons_impl.txt").unwrap();
-	let mut penum = fs::File::create("mons_enum.txt").unwrap();
+
+
+	let mut pimpl = fs::File::create("mons_impl.part").unwrap();
+	let mut penum = fs::File::create("mons_enum.part").unwrap();
+    let mut pfuncs = fs::File::create("mons_funcs.part").unwrap();
 	
+    pimpl.set_len(0);
+    penum.set_len(0);
+    pfuncs.set_len(0);
+
 	let mut dex: Vec<i32> = Vec::new();
 	let mut rname_vec = Vec::new();
+    rname_vec.push("None".to_string());
 	let mut ename_vec = Vec::new();
+    ename_vec.push("None".to_string());
 	let mut stats_vec: Vec<String> = Vec::new();
 	let mut types_vec = Vec::new();
-
+    
+    // Gather real names and type names
 	let mut curvec = Vec::new();
 	let mut curnamevec = Vec::new();
 	for i in 0..real_names.len() {
@@ -92,6 +109,7 @@ fn main() {
 
 	let mut code = String::new();
 
+    // |Start| source file
 	code.push_str("#![allow(snake_case)]\n");
 	code.push_str("#![allow(non_camel_case_types)]\n");
 	code.push_str("#![allow(unused_variables)]\n\n");
@@ -103,7 +121,13 @@ fn main() {
 	for word in ename_vec.iter() {
 		code.push_str(format!("\t{},\n", word).as_str());
 	}
-	code.push_str("}\n");
+	code.push_str("}\n\n");
+
+    code.push_str("pub const Pokemon: [Pokemon; 1026] = [\n");
+    for word in ename_vec.iter() {
+        code.push_str(format!("\tcrate::Pokemon::{},\n", word).as_str());
+    }
+    code.push_str("];\n\n");
 
 	penum.write(code.as_bytes());
 	
@@ -112,61 +136,72 @@ fn main() {
 	// impl block
 	code.push_str("impl Pokemon {\n");
 
-	// get dex number
+	// get dex number ( just cast it to a primitive lol )
 	code.push_str("\tpub fn dex(&self) -> u16 {\n");
-	code.push_str("\t\tmatch self {\n");
-	for i in 0..dex.len() {
-		code.push_str(format!("\t\t\tSelf::{} => {}u16,\n", ename_vec[i], dex[i]).as_str());
-	}
-	code.push_str("\t\t\t_ => { println!(\"Unknown Pokémon ID. \"); u16::MAX },\n");
-	code.push_str("\t\t}\n");
+	code.push_str("\t\t*self as u16\n");
 	code.push_str("\t}\n\n");
 	
 	// get name string
 	code.push_str("\t\tpub fn name(&self) -> String {\n");
 	code.push_str("\t\tmatch self {\n");
-	for i in 0..dex.len() {
+	for i in 0..ename_vec.len() {
 		code.push_str(format!("\t\t\tSelf::{} => \"{}\".to_string(),\n", ename_vec[i], rname_vec[i]).as_str());
 	}
-	code.push_str("\t\t\t_ => { println!(\"Unknown Pokémon ID. \"); String::new() },\n");
+	code.push_str("\t\t\t_ => String::new(),\n");
 	code.push_str("\t\t}\n");
 	code.push_str("\t}\n\n");
 
 	// get base stats
-	code.push_str("\t\tpub fn base_stats(&self) -> [u8; 6] {\n");
+	code.push_str("\tpub fn base_stats(&self) -> [u8; 6] {\n");
 	code.push_str("\t\tmatch self {\n");
-	for i in 0..dex.len() {
-		code.push_str(format!("\t\t\tSelf::{} => [{}],\n", ename_vec[i], base_stats[i]).as_str());
+	for i in 0..ename_vec.len() {
+        if i == 0 {
+            code.push_str("\t\t\tSelf::None => [0u8,0u8,0u8,0u8,0u8,0u8],\n");
+            continue;
+        }
+		code.push_str(format!("\t\t\tSelf::{} => [{}],\n", ename_vec[i], base_stats[i-1]).as_str());
 	}
-	code.push_str("\t\t\t_ => { println!(\"Unknown Pokémon ID. \"); [0u8,0u8,0u8,0u8,0u8,0u8] },\n");
+	code.push_str("\t\t\t_ => [0u8,0u8,0u8,0u8,0u8,0u8],\n");
 	code.push_str("\t\t}\n");
 	code.push_str("\t}\n\n");
 
 	// get type(s) of pokemon
 	code.push_str("\t\tpub fn types(&self) -> [BattleType; 2] {\n");
 	code.push_str("\t\tmatch self {\n");
-	for i in 0..dex.len() {
-		code.push_str(format!("\t\t\tSelf::{} => [{}, {}],\n", ename_vec[i], types_vec[i][0], types_vec[i][1]).as_str());
+	for i in 0..ename_vec.len() {
+        if i == 0 {
+            code.push_str("\t\t\tSelf::None => [BattleType::None, BattleType::None],\n");
+            continue;
+        }
+		code.push_str(format!("\t\t\tSelf::{} => [{}, {}],\n", ename_vec[i], types_vec[i-1][0], types_vec[i-1][1]).as_str());
 	}
 	code.push_str("\t\t\t_ => { println!(\"Unknown Pokémon ID. \"); [BattleType::None, BattleType::None] },\n");
 	code.push_str("\t\t}\n");
 	code.push_str("\t}\n\n");
 
+//    code.push_str("\tpub fn body_type 
 
 		
 	// close impl
 	code.push_str("}\n\n");
 
+    pimpl.write(code.as_bytes());
+    code = String::new();
+
 	// get Pokemon from dex number
 	code.push_str("pub fn mon_at_dex(dex: usize) -> Pokemon {\n");
 	code.push_str("\tmatch dex as u16 {\n");
-	for i in 0..dex.len() {
-		code.push_str(format!("\t\t{} => Pokemon::{},\n", dex[i], ename_vec[i]).as_str());
+	for i in 0..dex.len()+1 {
+        if i == 0 {
+            code.push_str("\t\t0u16 => Pokemon::None,\n");
+            continue;
+        }
+		code.push_str(format!("\t\t{} => Pokemon::{},\n", dex[i-1], ename_vec[i]).as_str());
 	}
 	code.push_str("\t\t_ => { println!(\"Invalid dex number. \"); Pokemon::Bulbasaur },\n");
 	code.push_str("\t}\n}\n\n");
 	
-	pimpl.write(code.as_bytes());
+	pfuncs.write(code.as_bytes());
 	println!("End.");
 	
 }
