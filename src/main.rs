@@ -27,10 +27,48 @@ use crate::moves::{Effect, PokeMove, Target};
 
 use rand::prelude::*;
 use std::process::Command;
-use std::thread;
+use std::thread::{self, sleep, JoinHandle};
 use std::io::Write;
+use std::sync::mpsc::*;
 
+use std::{io, time::{
+    Instant,
+    Duration}
+};
+use tui::{
+    text::{Span, Spans},
+    backend::CrosstermBackend,
+    widgets::{Widget, Block, Borders, Tabs, List, ListItem},
+    layout::{Layout, Constraint, Direction, Rect},
+    Terminal,
+    style::{Style, Color},
+};
+use crossterm::{
+    event::{self, poll, read, DisableMouseCapture, EnableMouseCapture, Event, KeyEvent, KeyEventKind, KeyCode::{self, *}, KeyModifiers},
+    ExecutableCommand, execute,
+    cursor::{DisableBlinking, EnableBlinking, MoveUp, MoveDown, MoveTo, RestorePosition, SavePosition, Hide, Show},
+    terminal::{Clear, ClearType, disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+};
 use std::result::Result;
+
+
+
+// ! TEMPORARY ! : TODO: Place audio playing functions into an enum (maybe via code generation)
+// Hard-coding strings is a work-around for dealing with string movement semantics (for now)
+fn play_intro() {
+    
+    let arguments = ["-nodisp".to_string(), "Rustemon_Intro_Sound.mp3".to_string(), 
+                  "-autoexit".to_string(), "-loglevel".to_string(), "quiet".to_string(),
+                    ];
+    let handle = move |args| {
+        let mut command = Command::new(&String::from("ffplay")); 
+        command.args(&args)
+            .spawn().expect("command failed.");
+        
+        let _ = execute!(io::stdout(), MoveUp(1));
+    };
+    thread::spawn(move || { handle(arguments.clone());  } );
+}
 
 #[derive(Debug, Clone)]
 struct Party<'a> {
@@ -76,19 +114,9 @@ impl<'a> std::ops::IndexMut<usize> for Party<'a> {
 }
 
 
-// ! TEMPORARY ! : TODO: Place audio playing functions into an enum (maybe via code generation)
-// Hard-coding strings is a work-around for dealing with string movement semantics (for now)
-
-fn play_intro() {
-    let handle = move || {
-        Command::new(&String::from("ffplay"))
-            .args(&["-nodisp".to_string(), "Rustemon_Intro_Sound.wav".to_string(), 
-                  "-autoexit".to_string(), "-loglevel".to_string(), "quiet".to_string() ])
-            .spawn().expect("command failed.");
-
-        print!("\x1B[A");
-        };
-    thread::spawn(move || { handle();  } );
+struct Player<'a> {
+    name: String,
+    party: Party<'a>
 }
 
 
@@ -113,7 +141,7 @@ struct Monster<'a> {
 
 impl<'a> Monster<'a> {
     
-	pub fn new(dex: usize, level: usize) -> RefCell<Monster<'a>> { //Implemeneted as a refcell
+	pub fn new(dex: usize, level: u8) -> RefCell<Monster<'a>> { //Implemeneted as a refcell
                                                                    //because multiple sources may
                                                                    //end up needing to alter a
                                                                    //monster in a single pass
@@ -126,7 +154,7 @@ impl<'a> Monster<'a> {
 			curstats: [0; 6],
             accuracy: 100.0f64,
             crit_level: 0u8,
-			lvl: level as u8,
+			lvl: level,
 			status: Effect::Null,
 			moves: &[PokeMove::Null; 4],
 			owned: false,
@@ -225,47 +253,172 @@ impl<'a> Monster<'a> {
 }
 
 
+pub fn main_menu(player_data: &mut Player) -> io::Result<()> {
+    
+    let entries = vec![
+        "New Game",
+        "Continue",
+        "Options"
+    ];
+
+    let mut in_menu = true;
+    let mut menu_select = 0;
+    let mut item_count = 0;
+
+    let mut stdout = io::stdout();
+    let backend = CrosstermBackend::new(stdout);
+    let mut terminal = Terminal::new(backend)?;
+       
+    execute!(io::stdout(), EnterAlternateScreen, EnableMouseCapture)?;
+        
+       while in_menu { 
+            if poll(Duration::from_millis(100)).expect("IO error in menu.") {
+                match read() {
+                    Ok(Event::Key(event)) => match event.code {
+                        KeyCode::Up => { if menu_select > 0 {
+                                            menu_select -= 1;
+                                        } else {
+                                            print!("");
+                                        }
+                                    },
+                        KeyCode::Down => { if menu_select <= 2 {
+                                            menu_select += 1;
+                                        } else {
+                                            print!("");
+                                        }
+                                    },
+                        Char('c') => in_menu = false,
+                        _ => print!(""),
+                    },
+                    _ => print!(""), // add some kind of feedback (preferably a short sound effect)
+                }
+            }
+           // Render menu based on which item is selected
+               let menu = List::new(entries.clone()
+                   .into_iter()
+                   .map(|item| {
+                       if menu_select == item_count {
+                           item_count += 1;
+                           ListItem::new("> ".to_owned() + item)
+                               .style(Style::default().fg(Color::Red).bg(Color::White))
+                       } else {
+                           item_count += 1;
+                           ListItem::new(item)
+                       }
+                   })
+                   .collect::<Vec<_>>()
+               );
+        
+    terminal.draw(|f| {
+
+       let chunks = Layout::default()
+           .direction(Direction::Horizontal)
+           .margin(1)
+           .constraints(
+               [
+                    Constraint::Percentage(40),
+                    Constraint::Percentage(50)
+               ].as_ref()
+           )
+           .split(
+               Rect {
+                   x: 0,
+                   y: 0,
+                   width: f.size().width,
+                   height: (entries.len()+3 +2) as u16 
+                       // plus 3 to account for margins, then another 2 to add whitespace
+               }
+            );
+    
+               let tabs = menu
+                   .block(
+                       Block::default()
+                       .title("MENU")
+                       .borders(Borders::ALL)
+                   );
+
+        f.render_widget(tabs, chunks[0]);
+
+    })?;
+
+
+        item_count = 0;
+        
+       }
+    execute!(io::stdout(), LeaveAlternateScreen, DisableMouseCapture)?;
+
+    Ok(())
+
+}
+
 
 // COPYRIGHT MESSAGE
-const COPYRIGHT: &str = "\tInspired by and adapted from \n\
-                         \tthe works of GAME FREAK Inc. , by whom \n\
-                         \tcopyright (\u{00a9}) is reserved. This project is \n\
-                         \tpublished as an open-source, non-profit endeavor.";
+const COPYRIGHT_MESSAGE: [&str; 4] = ["Inspired by and adapted from ",
+                         "the works of GAME FREAK Inc. , by whom ",
+                         "copyright (\u{00a9}) is reserved. This project is ",
+                         "published as an open-source, non-profit endeavor."];
 
 
-fn main() {
+fn main() -> Result<(), io::Error> {
+
+    let mut stdout = io::stdout();
+    execute!(stdout, Hide);
+
+    enable_raw_mode()?;
+
+    //let backend = CrosstermBackend::new(io::stdout());
+    //let mut terminal = Terminal::new(backend)?;
 
     //
     // KEEP THIS HERE FOR LEGAL REASONS!!!
     // ( Copyright message, stylized )
     
-    // Make some room and return to top of message (required for the spawned ffplay thread to not displace output)
+    // Make some room
     for _ in 0..40 {
         println!();
     }
-    print!("\x1B[5A");
+    execute!(stdout, MoveTo(0,19));
 
+    let mut intro_time = 2440; //milliseconds
     for i in 0..100 {
         let mut i = i;
-        if i == 50 {
-            play_intro();
-            std::thread::sleep(std::time::Duration::from_millis(3000)); //Must be longer than
-                                                                        //how long it takes to
-                                                                        //complete audio thread
-        } else if i > 50 {
-            i = 100-i;
+        if poll(Duration::from_millis(20))? {
+            execute!(stdout, Clear(ClearType::All), MoveTo(0,22))?;
+            match read()? {
+                _ => break,
+            }// if user does anything, skip the rest
+        } else {
+            if i == 50 {
+                play_intro();
+                if poll(Duration::from_millis(3000))? {
+                    let timer = Instant::now();
+                    execute!(stdout, Clear(ClearType::All), MoveTo(0,22));
+                    match read()? {
+                        _ => { while (timer.elapsed().as_millis() as usize) < intro_time {
+                            for line_num in 0..4 {                                                                                           execute!(stdout, MoveTo(0,19+line_num))?;                                                                    print!("{}", &COPYRIGHT_MESSAGE[line_num as usize]);                                                     } //Display while waiting
+                            };
+                            break}, // allow interrupt during sound effect
+                    }
+                }
+            } else if i > 50 {
+                i = 100-i;
+            }
+            let shade = format!("\x1B[38;2;{0};{0};{0}m", (i as f32*5.222) as usize );
+            print!("{}", &shade);
+            for line_num in 0..4 {
+                execute!(stdout, MoveTo(0,19+line_num))?;
+                print!("{}", &COPYRIGHT_MESSAGE[line_num as usize]);
+            }
+ 
         }
-        let shade = format!("\x1B[38;2;{0};{0};{0}m", (i as f32*5.222) as usize );
-        println!("{}{}", &shade, &COPYRIGHT);
-        std::thread::sleep(std::time::Duration::from_millis(20)); //TODO: Tie animation to actual
-                                                                  //time passed rather than
-                                                                  //sleeping for a set amount of
-                                                                  //time such as in the
-                                                                  //intro animation
-        
-        print!("\x1B[4A");
-        
+        if intro_time >= 20 {
+            intro_time -= 20;
+        }
+
     }
+
+    execute!(stdout, Clear(ClearType::All))?;
+
     //Reset text style
     print!("\x1B[0m");
     
@@ -277,17 +430,27 @@ fn main() {
     let intro_ptr = &animation_data::intro::FRAME_DATA;
     let intro_start = std::time::Instant::now();
 
-    for _ in 0..14 {
-        println!();
-    }
     while playing_intro {
+        
         if intro_start.elapsed().as_millis() as usize >= (animation_speed * intro_state) {
             
-            println!("\x1B[14A");
-            let _ = std::io::stdout().write(intro_ptr[intro_state as usize].as_bytes() );
-            
+            let frame = intro_ptr[intro_state as usize].lines()
+                            .collect::<Vec<&str>>();
+            for i in 0..frame.len() {
+                
+                print!("\x1B[{};1H", 20+i);
+                let _ = io::stdout().write(frame[i].as_bytes());
+
+            }
+
+            let _ = io::stdout().flush();
 
             intro_state += 1;
+        }
+        if poll(Duration::from_millis((animation_speed * intro_state - intro_start.elapsed().as_millis() as usize).try_into().unwrap()))? {
+            match read()? {
+                _ => break,
+            }
         }
         if intro_state >= intro_ptr.len().try_into().unwrap() {
             playing_intro = false;
@@ -298,16 +461,27 @@ fn main() {
     // MAIN LOGIC
 
     //Initialize player data
-    let mut player_party = Party::new();
-    player_party[0] = Monster::new(0, 0);
-
+    let mut player = Player { name: "DEV".to_string(), party: Party::new() };
+    player.party[0] = Monster::new(150, 0u8);
     
+    // Menu
+    
+    { main_menu(&mut player);
+      disable_raw_mode();
+    }
+
+    disable_raw_mode()?;
+
+    execute!(io::stdout(), Show);
 
     // TESTING
-    dbg!(&player_party[0]);
+    dbg!(&player.party[0]);
 	println!("{:?}",BattleType::Fire.weaknesses());
 	println!("{}",format!("{:?}", BattleType::Fire));
     println!("{:?}, {:?}", Pokemon[0], Pokemon[0].name());
+
+
+    Ok(())
     
 }
 
