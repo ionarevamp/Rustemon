@@ -16,7 +16,7 @@ jobs:
 
     steps:
     - name: Import
-      run: ./import.sh
+      run: bash import.sh
     - uses: actions/checkout@v3
     - name: Build
       run: cargo run --release
