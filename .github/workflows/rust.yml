@@ -17,7 +17,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Install SDL2
-      run: sudo apt-get install libsdl2-dev libsdl2
+      run: sudo apt-get install libsdl2-dev
     - name: Install libunwind
       run: sudo apt-get install android-libunwind-dev android-libunwind libunwind-dev
     - name: Import
