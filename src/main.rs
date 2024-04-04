@@ -627,7 +627,7 @@ pub fn options_menu(
 
     execute!(io::stdout(), LeaveAlternateScreen).unwrap();
 
-    if !confirm {
+    if confirm {
         options = Options {
             frame_color: colors[color_index],
             frame_style: borders[border_index],
