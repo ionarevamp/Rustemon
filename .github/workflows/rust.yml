@@ -10,7 +10,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  aarch64:
 
     runs-on: ubuntu-latest
 
@@ -33,3 +33,4 @@ jobs:
         use-cross: true
         command: build
         args: --release --target=aarch64-linux-android
+        run: cargo
