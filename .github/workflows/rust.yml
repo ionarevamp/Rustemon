@@ -20,8 +20,8 @@ jobs:
       run: sudo apt-get update && sudo apt-get upgrade && sudo apt-get install libsdl2-dev libsdl2-gfx-dev libsdl2-mixer-dev libsdl2-ttf-dev libsdl2-image-dev
     - name: Install libunwind
       run: sudo apt-get update && sudo apt-get upgrade && sudo apt-get install libunwind-dev
-    - name: Update linker
-      run: sudo apt-get install 'clang*'
+    - name: Update linkers
+      run: sudo apt-get install 'clang*' 'ld*'
     - name: Import
       run: $PWD/import.sh
     - uses: actions-rs/toolchain@v1
