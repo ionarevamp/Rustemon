@@ -20,9 +20,7 @@ jobs:
       run: ls
     - name: Show Directory Name
       run: echo $PWD
-    - name: Test 'la' command
-      run: la import.sh
     - name: Import
-      run: import.sh
+      run: $PWD/import.sh
     - name: Build
       run: cargo run --release
