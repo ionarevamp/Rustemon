@@ -21,7 +21,7 @@ jobs:
     - name: Install libunwind
       run: sudo apt-get update && sudo apt-get upgrade && sudo apt-get install libunwind-dev
     - name: Update linkers
-      run: sudo apt-get install 'clang*' 'ld*'
+      run: sudo apt-get install 'clang*' ld lld
     - name: Import
       run: $PWD/import.sh
     - uses: actions-rs/toolchain@v1
