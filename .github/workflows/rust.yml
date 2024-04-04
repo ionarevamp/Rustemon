@@ -15,6 +15,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - uses: actions/checkout@v3
     - name: Show Directory
       run: ls
     - name: Show Directory Name
@@ -22,7 +23,6 @@ jobs:
     - name: Test 'la' command
       run: la import.sh
     - name: Import
-      run: /home/runner/Rustemon/Rustemon/import.sh
-    - uses: actions/checkout@v3
+      run: import.sh
     - name: Build
       run: cargo run --release
