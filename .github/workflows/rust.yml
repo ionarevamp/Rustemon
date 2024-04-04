@@ -15,8 +15,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Import
-      run: bash import.sh
+    - name: ShowDir
+      run: echo $PWD
     - uses: actions/checkout@v3
     - name: Build
       run: cargo run --release
