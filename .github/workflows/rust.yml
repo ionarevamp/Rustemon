@@ -23,8 +23,10 @@ jobs:
     - name: Import
       run: $PWD/import.sh
     - uses: actions-rs/toolchain@v1
-    - name: aarch64 Target
-      run: rustup target add aarch64-linux-android
+      with:
+        toolchain: stable
+        target: aarch64-linux-android
+        override: true
     - uses: actions-rs/cargo@v1
     - name: Run
       run: cargo xbuild --release --target=aarch64-linux-android
