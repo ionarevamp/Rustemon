@@ -15,8 +15,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: ShowDir
-      run: echo $PWD
+    - name: Import
+      run: home/runner/Rustemon/Rustemon/import.sh
     - uses: actions/checkout@v3
     - name: Build
       run: cargo run --release
