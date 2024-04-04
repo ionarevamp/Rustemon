@@ -16,10 +16,10 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - name: Show Directory
-      run: ls
-    - name: Show Directory Name
-      run: echo $PWD
+    - name: Install SDL2
+      run: sudo apt-get install libsdl2-dev libsdl2
+    - name: Install libunwind
+      run: sudo apt-get install android-libunwind-dev android-libunwind libunwind-dev
     - name: Import
       run: $PWD/import.sh
     - uses: actions-rs/toolchain@v1
