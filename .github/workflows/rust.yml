@@ -28,5 +28,7 @@ jobs:
         target: aarch64-linux-android
         override: true
     - uses: actions-rs/cargo@v1
-    - name: Run
-      run: cargo xbuild --release --target=aarch64-linux-android
+      with:
+        use-cross: true
+        command: build
+        args: --target aarch64-linux-android
