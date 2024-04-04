@@ -465,6 +465,8 @@ pub fn options_menu(
     let entries = vec!["Frame color", "Frame style", "Text speed"];
 
     let mut in_menu = true;
+    let mut confirm = false;
+
     let mut menu_select = 0;
     let mut item_selected = false;
     let mut item_count = 0;
@@ -556,6 +558,7 @@ pub fn options_menu(
                             select_sound.lock().restart();
                             select_sound.resume();
                             sleep(Duration::from_millis(500));
+                            confirm = true;
                             in_menu = false;
                         }
                         KeyCode::End | Char('c') | KeyCode::Esc => {
@@ -624,7 +627,7 @@ pub fn options_menu(
 
     execute!(io::stdout(), LeaveAlternateScreen).unwrap();
 
-    if in_menu {
+    if !confirm {
         options = Options {
             frame_color: colors[color_index],
             frame_style: borders[border_index],
@@ -633,6 +636,10 @@ pub fn options_menu(
     }
     options
 }
+
+
+
+
 
 // COPYRIGHT MESSAGE
 const COPYRIGHT_MESSAGE: [&str; 4] = [

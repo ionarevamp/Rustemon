@@ -127,7 +127,7 @@ fn main() {
     code.push_str("#![allow(snake_case)]\n");
     code.push_str("#![allow(non_camel_case_types)]\n");
     code.push_str("#![allow(unused_variables)]\n");
-    code.push_str("#![allow(non_upper_case_global)]\n");
+    code.push_str("#![allow(non_upper_case_globals)]\n");
     code.push_str("#![allow(unused_variables)]\n\n");
 
     code.push_str("\n\nuse crate::types::BattleType;\n");

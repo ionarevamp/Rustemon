@@ -3,7 +3,7 @@
 // Also, each frame must be the same height (14 for now).
 
 pub const FRAME_DATA: &[&str] = &[
-"                                       
+    "                                       
                                        
                                        
                                        
@@ -17,7 +17,7 @@ pub const FRAME_DATA: &[&str] = &[
                                        
                                        
                                        ",
-"                                       
+    "                                       
                                        
                                        
                                        
@@ -31,7 +31,7 @@ pub const FRAME_DATA: &[&str] = &[
                                        
                                        
                                        ",
-"                                       
+    "                                       
                                        
                                        
                                        
@@ -45,7 +45,7 @@ pub const FRAME_DATA: &[&str] = &[
                                        
                                        
                                        ",
-"                                       
+    "                                       
                                        
                                        
                                        
@@ -59,7 +59,7 @@ pub const FRAME_DATA: &[&str] = &[
                                        
                                        
                                        ",
-"                                       
+    "                                       
                                        
                                        
                                        
@@ -73,7 +73,7 @@ pub const FRAME_DATA: &[&str] = &[
                                        
                                        
                                        ",
-"                                       
+    "                                       
                                        
                                        
                                        
@@ -87,7 +87,7 @@ pub const FRAME_DATA: &[&str] = &[
                                        
                                        
                                        ",
-"                                       
+    "                                       
                                        
                                        
                                        
@@ -101,8 +101,7 @@ pub const FRAME_DATA: &[&str] = &[
                                        
                                        
                                        ",
-
-"                                       
+    "                                       
                                        
                                        
                                        
@@ -116,7 +115,7 @@ pub const FRAME_DATA: &[&str] = &[
                                        
                                        
                                        ",
-"                                       
+    "                                       
                                        
                                        
                                        
@@ -130,8 +129,7 @@ pub const FRAME_DATA: &[&str] = &[
                                        
                                        
                                        ",
-
-"                                       
+    "                                       
                                        
                                        
                                        
@@ -145,7 +143,7 @@ pub const FRAME_DATA: &[&str] = &[
                                        
                                        
                                        ",
-"                                       
+    "                                       
                                        
                                        
                                        
@@ -159,8 +157,7 @@ pub const FRAME_DATA: &[&str] = &[
                                        
                                        
                                        ",
-
-"                                       
+    "                                       
                                        
                                        
                ..---..                   
@@ -174,7 +171,7 @@ pub const FRAME_DATA: &[&str] = &[
                                        
                                        
                                        ",
-"                                       
+    "                                       
                                        
                   _                    
               .~°` `°~.                
@@ -188,7 +185,7 @@ pub const FRAME_DATA: &[&str] = &[
                                        
                                        
                                        ",
-"                                       
+    "                                       
                  _._                   
              _-°`   `°-_               
            .°           °.             
@@ -202,7 +199,7 @@ pub const FRAME_DATA: &[&str] = &[
                 `°`°`                  
                                        
                                        ",
-"                                       
+    "                                       
                   .                    
               - `   ` -                
             °           °              
@@ -216,7 +213,7 @@ pub const FRAME_DATA: &[&str] = &[
                  ° °                   
                                        
                                        ",
-"                                       
+    "                                       
                   `                    
               / `   ` /                
             -           -              
@@ -230,7 +227,7 @@ pub const FRAME_DATA: &[&str] = &[
                  * o                   
                                        
                                        ",
-"                                       
+    "                                       
                   *                    
               | `   `  -               
             °           -              
@@ -244,7 +241,7 @@ pub const FRAME_DATA: &[&str] = &[
               `  * o                   
                                        
                                        ",
-"                                       
+    "                                       
               \\    *    |               
                 `   `                  
                         °              
@@ -258,7 +255,7 @@ pub const FRAME_DATA: &[&str] = &[
               `    *     -             
                 °                     
                                        ",
-"                                       
+    "                                       
               -    *    °               
                 `   `                  
             -                          
@@ -272,7 +269,7 @@ pub const FRAME_DATA: &[&str] = &[
               `         *             
                     °                  
                                        ",
-"                                       
+    "                                       
               *    °                   
                     `                  
             -                          
@@ -286,7 +283,7 @@ pub const FRAME_DATA: &[&str] = &[
       l        `         *             
                     °                  
                                        ",
-"                                       
+    "                                       
               °                        
                     `                  
             *                          
@@ -300,7 +297,7 @@ pub const FRAME_DATA: &[&str] = &[
       l      ~           °             
                                        
                                        ",
-"                                       
+    "                                       
               °                        
                     `                  
             *                          
@@ -314,7 +311,7 @@ pub const FRAME_DATA: &[&str] = &[
       *      `           °             
                                        
                                        ",
-"                                       
+    "                                       
                                        
                     `                  
             *                          
@@ -328,7 +325,7 @@ pub const FRAME_DATA: &[&str] = &[
       *      `           °             
                                        
                                        ",
-"                                       
+    "                                       
                                        
                     `                  
             °                          
@@ -342,7 +339,7 @@ pub const FRAME_DATA: &[&str] = &[
       *                  °             
                                        
                                        ",
-"                                       
+    "                                       
                                        
                                        
             °                          
@@ -356,7 +353,7 @@ pub const FRAME_DATA: &[&str] = &[
       °                  °             
                                        
                                        ",
-"                                       
+    "                                       
                                        
                                        
             °                          
@@ -370,7 +367,7 @@ pub const FRAME_DATA: &[&str] = &[
       °                               
                           °            
                                        ",
-"                                       
+    "                                       
                                        
                                        
             °                          
@@ -384,7 +381,7 @@ pub const FRAME_DATA: &[&str] = &[
       °                               
                           °            
                                        ",
-"                                       
+    "                                       
                                        
                                        
             °                          
@@ -398,7 +395,7 @@ pub const FRAME_DATA: &[&str] = &[
       °                               
                           °            
                                        ",
-"                                       
+    "                                       
                                        
                                        
             °                          
@@ -412,7 +409,7 @@ pub const FRAME_DATA: &[&str] = &[
       °                               
                           °            
                                        ",
-"                                       
+    "                                       
                                        
                                        
             °                          
@@ -426,7 +423,7 @@ pub const FRAME_DATA: &[&str] = &[
                                      
                                        
                            °           ",
-"                                       
+    "                                       
                                        
                                        
             °                          
@@ -440,7 +437,7 @@ pub const FRAME_DATA: &[&str] = &[
                                      
                                        
                            °           ",
-"                                       
+    "                                       
                                        
                                        
                                        
@@ -454,7 +451,7 @@ pub const FRAME_DATA: &[&str] = &[
                                      
                                        
                            °           ",
-"                                       
+    "                                       
                                        
                                        
                                        
@@ -468,7 +465,7 @@ pub const FRAME_DATA: &[&str] = &[
                                      
                                        
                            °           ",
-"                                       
+    "                                       
                                        
                                        
                                        
@@ -482,7 +479,7 @@ pub const FRAME_DATA: &[&str] = &[
                                      
                                        
                            °           ",
-"                                       
+    "                                       
                                        
                                        
                                        
@@ -496,8 +493,7 @@ pub const FRAME_DATA: &[&str] = &[
                                      
                                        
                                        ",
-
-"                                       
+    "                                       
                                        
                                        
                                        
@@ -511,8 +507,7 @@ pub const FRAME_DATA: &[&str] = &[
                                      
                                        
                                        ",
-
-"                                       
+    "                                       
                                        
                                        
                                        
@@ -526,7 +521,7 @@ pub const FRAME_DATA: &[&str] = &[
                                        
                                        
                                        ",
-"                                       
+    "                                       
                                        
                                        
                                        
@@ -540,7 +535,7 @@ pub const FRAME_DATA: &[&str] = &[
                                        
                                        
                                        ",
-"                                       
+    "                                       
                                        
                                        
                                        
@@ -554,358 +549,4 @@ pub const FRAME_DATA: &[&str] = &[
                                        
                                        
                                        ",
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    ];
+];
