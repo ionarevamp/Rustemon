@@ -15,9 +15,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Show Debug Info
+    - name: Show Directory
       run: ls
+    - name: Show Directory Name
       run: echo $PWD
+    - name: Test 'la' command
       run: la import.sh
     - name: Import
       run: /home/runner/Rustemon/Rustemon/import.sh
