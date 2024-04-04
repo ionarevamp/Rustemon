@@ -22,9 +22,14 @@ jobs:
       run: echo $PWD
     - name: Import
       run: $PWD/import.sh
-    - name: Build
-      uses: actions-rs/cargo@v1
+    - name: aarch64 Build
+    - uses: actions-rs/toolchain@v1
       with:
+        toolchain: stable
+        target: aarch64-linux-android
+        override: true
+    - uses: actions-rs/cargo@v1
+      with:
+        use-cross: true
         command: build
-        args: --release --target=${{ matrix.target }}
-        use-cross: ${{ matrix.cross }}
+        args: --release --target=aarch64-linux-android
