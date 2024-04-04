@@ -1,4 +1,4 @@
-Rust exercise: Recreate Pokémon battle logic.
+Rust exercise: attempt to recreate Pokémon.
 
 To import Pokémon data, run `import.sh`. Then use `cargo (build|run|install|etc.)` as normal.
 
