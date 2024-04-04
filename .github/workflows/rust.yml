@@ -15,6 +15,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Show Debug Info
+      run: ls
+      run: echo $PWD
+      run: la import.sh
     - name: Import
       run: /home/runner/Rustemon/Rustemon/import.sh
     - uses: actions/checkout@v3
