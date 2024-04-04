@@ -19,7 +19,7 @@ jobs:
     - name: Install SDL2
       run: sudo apt-get update && sudo apt-get upgrade && sudo apt-get install libsdl2-dev
     - name: Install libunwind
-      run: sudio apt-get update && sudo apt-get upgrade && sudo apt-get install libunwind-dev
+      run: sudo apt-get update && sudo apt-get upgrade && sudo apt-get install libunwind-dev
     - name: Import
       run: $PWD/import.sh
     - uses: actions-rs/toolchain@v1
