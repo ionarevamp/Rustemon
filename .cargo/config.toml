@@ -2,7 +2,7 @@
 rustflags = [
     "-C", "linker=g++",
     "-C", "link-arg=-fuse-ld=ld.lld",
-    "-L", "/usr/local"
+    "-L", "/usr/include/x86_64-linux-gnu"
 ]
 
 [target.x86_64-unknown-linux-musl]
