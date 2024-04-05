@@ -17,7 +17,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Install SDL2
-      run: sudo apt-get update && sudo apt-get upgrade && sudo apt-get install libsdl2-2.0-0 libsdl2-dev libsdl2-gfx-dev libsdl2-mixer-dev libsdl2-ttf-dev libsdl2-image-dev
+      run: sudo apt-get update && sudo apt-get upgrade && sudo apt-get install libsdl2-2.0-0 libsdl2-dev libsdl2-gfx-dev libsdl2-mixer-dev libsdl2-ttf-dev libsdl2-image-dev && sudo dnf install sdl2-devel && yum install SDL2-devel
     - name: Install libunwind
       run: sudo apt-get update && sudo apt-get upgrade && sudo apt-get install libunwind-dev
     - name: Update linkers
