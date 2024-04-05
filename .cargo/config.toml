@@ -6,7 +6,6 @@ rustflags = [
 [dependencies.sdl2]
 version = "0.36"
 default-features = false
-features = ["ttf","image","gfx","mixer","static-link","bundled"]
 
 
 [target.x86_64-unknown-linux-musl]
@@ -14,7 +13,3 @@ rustflags = [
     "-C", "linker=g++",
 ]
 
-[dependencies.sdl2]
-version = "0.36"
-default-features = false
-features = ["ttf","image","gfx","mixer","static-link","bundled"]
