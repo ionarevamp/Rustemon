@@ -1,6 +1,7 @@
 [target.x86_64-unknown-linux-gnu]
 rustflags = [
     "-C", "linker=g++",
+    "-L", "/usr/local"
 ]
 
 [target.x86_64-unknown-linux-musl]
