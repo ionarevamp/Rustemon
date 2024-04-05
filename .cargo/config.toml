@@ -10,17 +10,12 @@ rustflags = [
 	"-L", "/usr/lib",
 ]
 
-[target.'cfg(target_abi = "gnu")'.dependencies.sdl2]
+[target.'cfg(all(target_abi = "gnu"))'.dependencies.sdl2]
 git = "https://github.com/rust-sdl2/rust-sdl2"
 default-features = false
 features = ["ttf","image","gfx","mixer","static-link","bundled"]
 
-#[target.x86_64-unknown-linux-gnu.dependencies.sdl2]
-#git = "https://github.com/rust-sdl2/rust-sdl2"
-#default-features = false
-#features = ["ttf","image","gfx","mixer","static-link","bundled"]
-#
-#[target.x86_64-unknown-linux-musl.dependencies.sdl2]
-#git = "https://github.com/rust-sdl2/rust-sdl2"
-#default-features = false
-#features = ["ttf","image","gfx","mixer","static-link","bundled"]
+[target.'cfg(all(target_abi = "musl"))'.dependencies.sdl2]
+git = "https://github.com/rust-sdl2/rust-sdl2"
+default-features = false
+features = ["ttf","image","gfx","mixer","static-link","bundled"]
