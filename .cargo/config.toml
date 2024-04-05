@@ -3,11 +3,15 @@
 rustflags = [
     "-C", "linker=g++",
 	"-l", "static=SDL2"
+	"-L", "/usr/lib"
 ]
 
 [target.x86_64-unknown-linux-musl]
 rustflags = [
     "-C", "linker=g++",
+	"-l", "static=SDL2"
+	"-L", "/usr/lib"
+
 ]
 
 [target.'cfg(target_arch = "x86_64")'.dependencies]
