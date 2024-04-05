@@ -1,11 +1,11 @@
-[target.'cfg(target_arch = "x86_64")']
+[target.'cfg(target_arch = "x86")']
 
 rustflags = [
     "-C", "linker=gcc",
 	"-L", "/usr/lib",
 ]
 
-[target.'cfg(target_arch = "x86_64")'.dependencies.sdl2]
+[target.'cfg(target_arch = "x86")'.dependencies.sdl2]
 git = "https://github.com/rust-sdl2/rust-sdl2"
 default-features = false
 features = ["ttf","image","gfx","mixer","static-link","bundled"]
