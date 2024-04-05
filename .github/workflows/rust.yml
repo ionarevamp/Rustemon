@@ -32,8 +32,6 @@ jobs:
         use-cross: true
         command: build
         args: --release --target x86_64-unknown-linux-gnu
-    - name: Upload binary
-      run: mkdir $PWD/binaries && mv $PWD/target/x86_64-unknown-linux-gnu/release/pokemon_structs $PWD/binaries/Rustemon-V.N-x86_64-unknown-linux-gnu && git add binaries/Rustemon-*-x86_64-unknown-linux-gnu && git commit -m "Built gnu binary" && git push
 
         
   x86_64-unknown-linux-musl:
@@ -58,7 +56,6 @@ jobs:
         use-cross: true
         command: build
         args: --release --target x86_64-unknown-linux-musl
-    - name: Upload binary
-      run: mkdir $PWD/binaries && mv $PWD/target/x86_64-unknown-linux-musl/release/pokemon_structs $PWD/binaries/Rustemon-V.N-x86_64-unknown-linux-musl && git add binaries/Rustemon-*-x86_64-unknown-linux-musl && git commit -m "Built musl binary" && git push
+
 
 
