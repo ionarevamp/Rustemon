@@ -18,6 +18,9 @@ impl Sound {
     pub fn volume(&self) -> f32 {
         self.volume.clone()
     }
+    pub fn pos(&self) -> usize {
+        self.pos
+    }
     pub fn fade_in(&mut self, rate: f32, max: f32) {
         if self.volume < max {
             self.volume += rate;
@@ -151,3 +154,50 @@ pub fn generate_sound(
 }
 
 // ^ This returns a device and an audio spec...
+//
+
+
+
+#[allow(dead_code)]
+#[test]
+pub fn loop_test() -> Result<()> {
+
+    println!("Loading...");
+    let sdl_context = sdl2::init().expect("Unable to initialize SDL2");                                          println!("SDL2 initialized.");
+    let audio_subsystem = sdl_context
+        .audio()
+        .expect("Unable to initialize audio subsystem");
+    println!("Audio subsystem initialized.");
+
+    let wav = Cow::from(Path::new("Ominous.wav"));
+    let mut device = generate_sound(&audio_subsystem, &wav, 0.5, 0).unwrap().0;
+
+    device.resume();
+    let (mut loop_count, loop_limit) = (0,2);
+    loop {
+        device.lock().fade_percent(0.05, 1.0);
+        if device.lock().pos() >= 1154609*2 {
+            device.lock().restart();
+            device.lock().set_volume(0.5);
+            loop_count += 1;
+            if loop_count >= loop_limit { break; }
+       }
+    }
+
+    let wav = Cow::from(Path::new("Mysterious_Cyborg.wav"));
+    device = generate_sound(&audio_subsystem, &wav, 0.3, 0).unwrap().0;
+
+    device.resume();                                                                                             loop_count = 0;
+    loop {
+        device.lock().fade_percent(0.02, 1.0);
+        if device.lock().pos() >= (44100 as f64 * 21.33) as usize *2 {
+            device.lock().restart();
+            device.lock().set_volume(0.5);
+            loop_count += 1;
+            if loop_count >= loop_limit { break; }
+        }
+    }
+
+    Ok(())
+
+}
