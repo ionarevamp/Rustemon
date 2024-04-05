@@ -2,15 +2,15 @@
 
 rustflags = [
     "-C", "linker=g++",
-	"-l", "static=SDL2"
-	"-L", "/usr/lib"
+	"-l", "static=SDL2",
+	"-L", "/usr/lib",
 ]
 
 [target.x86_64-unknown-linux-musl]
 rustflags = [
     "-C", "linker=g++",
-	"-l", "static=SDL2"
-	"-L", "/usr/lib"
+	"-l", "static=SDL2",
+	"-L", "/usr/lib",
 
 ]
 
