@@ -1,10 +1,16 @@
-[target.'cfg(target_env = "gnu")']
+[target.'cfg(target_abi = "gnu")']
 rustflags = [
     "-C", "linker=gcc",
 	"-L", "/usr/lib",
 ]
 
-[target.'cfg(target_env = "gnu")'.dependencies.sdl2]
+[target.'cfg(target_abi = "musl")']
+rustflags = [
+    "-C", "linker=gcc",
+	"-L", "/usr/lib",
+]
+
+[target.'cfg(target_abi = "gnu")'.dependencies.sdl2]
 git = "https://github.com/rust-sdl2/rust-sdl2"
 default-features = false
 features = ["ttf","image","gfx","mixer","static-link","bundled"]

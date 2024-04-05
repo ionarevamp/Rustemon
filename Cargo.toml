@@ -17,7 +17,13 @@ crossterm = "0.27.0"
 rand = "0.8.5"
 ratatui = "0.26.1"
 
-[dependencies.sdl2]
+[target.'cfg(all(target_os = "android"))'.dependencies.sdl2]
 git = "https://github.com/rust-sdl2/rust-sdl2"
 default-features = false
 features = ["ttf","image","gfx","mixer"]
+
+[target.'cfg(not(target_os = "android"))'.dependencies.sdl2]
+git = "https://github.com/rust-sdl2/rust-sdl2"
+default-features = false
+features = ["ttf","image","gfx","mixer","static-link","bundled"]
+
