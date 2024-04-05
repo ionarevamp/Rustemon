@@ -9,7 +9,12 @@ rustflags = [
     "-C", "linker=g++",
 ]
 
-[target.'cfg(not(target-family "android"))'.dependencies.sdl2]
+[target.'cfg(target-family "gnu")'.dependencies.sdl2]
+git = "https://github.com/rust-sdl2/rust-sdl2"
+default-features = false
+features = ["ttf","image","gfx","mixer","static-link","bundled"]
+
+[target.'cfg(target-family "musl")'.dependencies.sdl2]
 git = "https://github.com/rust-sdl2/rust-sdl2"
 default-features = false
 features = ["ttf","image","gfx","mixer","static-link","bundled"]
