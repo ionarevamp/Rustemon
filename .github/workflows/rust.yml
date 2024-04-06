@@ -33,7 +33,7 @@ jobs:
         command: build
         args: --release --target x86_64-unknown-linux-gnu
     - name: Debug -- Show directory details
-      run: ls -R 'target/x86_64-unknown-linux-gnu/release/'
+      run: ls -R $PWD/target
     - uses: actions/upload-artifact@v4
       with:
       # Name of the artifact to upload.
