@@ -60,7 +60,7 @@ jobs:
         # The value can range from 0 to 9.
         # For large files that are not easily compressed, a value of 0 is recommended for significantly faster uploads.
         # Optional. Default is '6'
-        compression-level: 3
+        compression-level: 9
         
         # If true, an artifact with a matching name will be deleted before a new one is uploaded.
         # If false, the action will fail if an artifact for the given name already exists.
@@ -118,7 +118,7 @@ jobs:
         # The value can range from 0 to 9.
         # For large files that are not easily compressed, a value of 0 is recommended for significantly faster uploads.
         # Optional. Default is '6'
-        compression-level: 3
+        compression-level: 9
         
         # If true, an artifact with a matching name will be deleted before a new one is uploaded.
         # If false, the action will fail if an artifact for the given name already exists.
