@@ -32,8 +32,6 @@ jobs:
         use-cross: true
         command: build
         args: --release --target x86_64-unknown-linux-gnu
-    - name: Debug -- Show directory details
-      run: ls -R $PWD/target
     - uses: actions/upload-artifact@v4
       with:
       # Name of the artifact to upload.
@@ -42,7 +40,7 @@ jobs:
         
         # A file, directory or wildcard pattern that describes what to upload
         # Required.
-        path: "$PWD/target/x86_64-unknown-linux-gnu/release/pokemon_structs"
+        path: 'target/x86_64-unknown-linux-gnu/release/pokemon_structs'
         
         # The desired behavior if no files are found using the provided path.
         # Available Options:
@@ -100,7 +98,7 @@ jobs:
         
         # A file, directory or wildcard pattern that describes what to upload
         # Required.
-        path: "$PWD/target/x86_64-unknown-linux-musl/release/pokemon_structs"
+        path: 'target/x86_64-unknown-linux-musl/release/pokemon_structs'
         
         # The desired behavior if no files are found using the provided path.
         # Available Options:
