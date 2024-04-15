@@ -46,6 +46,8 @@ use sdl2::audio::{
     AudioCVT, AudioCallback, AudioDevice, AudioFormatNum, AudioSpec, AudioSpecDesired, AudioSpecWAV,
 };
 use sdl2::AudioSubsystem;
+use sdl2::mixer::{self, *};
+
 use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 
@@ -72,6 +74,7 @@ use crossterm::{
     },
     execute,
     terminal::{
+        self,
         disable_raw_mode, enable_raw_mode, Clear, ClearType, EnterAlternateScreen,
         LeaveAlternateScreen,
     },
@@ -161,11 +164,11 @@ impl<'a> Monster<'a> {
         //end up needing to alter a
         //monster in a single pass
         RefCell::new(Monster {
-            monster_id: mon_at_dex(dex),
-            battle_type: mon_at_dex(dex).types(),
+            monster_id: Pokemon[dex],
+            battle_type: Pokemon[dex].types(),
             iv: [0; 6],
             ev: [0; 6],
-            stats: mon_at_dex(dex).base_stats(),
+            stats: Pokemon[dex].base_stats(),
             curstats: [0; 6],
             accuracy: 100.0f64,
             crit_level: 0u8,
@@ -175,7 +178,7 @@ impl<'a> Monster<'a> {
             owned: false,
             affection: 0i32,
             nature: Nature::new(),
-            name: mon_at_dex(dex).name(),
+            name: Pokemon[dex].name(),
         })
     }
 
@@ -297,13 +300,11 @@ pub fn main_menu(
 
     let mut beep_sounds = Vec::new();
     let mut select_sound = extras::generate_sound(&audio_subsystem, &select_wav, 1.5, 0)
-        .unwrap()
-        .0;
-    for _ in 0..3 {
+        .unwrap();
+    for _ in 0..2 {
         beep_sounds.push(
             extras::generate_sound(&audio_subsystem, &beep_wav, 2.0, 0)
-                .unwrap()
-                .0,
+                .unwrap(),
         );
     }
 
@@ -658,7 +659,7 @@ fn main() -> Result<(), io::Error> {
         .audio()
         .expect("Unable to initialize audio subsystem");
     println!("Audio subsystem initialized.");
-
+    
     let beep_wav = Cow::from(Path::new("shortbeep.wav"));
     let select_wav = Cow::from(Path::new("select.wav"));
 
@@ -670,51 +671,56 @@ fn main() -> Result<(), io::Error> {
     let mut stdout = io::stdout();
     execute!(stdout, Hide);
 
-    enable_raw_mode()?;
-
     // KEEP THIS HERE FOR LEGAL REASONS!!!
     // ( Copyright message, stylized )
 
     // Make some room
-    for _ in 0..40 {
+    for _ in 0..terminal::size().expect("Error getting terminal size").1 {
         println!();
     }
     execute!(stdout, MoveTo(0, 19), Clear(ClearType::All));
+    
+    enable_raw_mode()?;
 
-    for i in 0..100 {
-        let mut i = i;
-        if poll(Duration::from_millis(20))? {
-            match read()? {
-                _ => break,
-            } // if user does anything, skip the rest
-        } else {
-            if i == 50 {
-                let message_wav = Cow::from(Path::new("Rustemon_Intro_Sound.wav"));
-                let mut message_sound =
-                    extras::generate_sound(&audio_subsystem, &message_wav, 3.5, 0)
-                        .unwrap()
-                        .0;
+    'message: { // keeps its own scope to properly load and drop sound data
+        
+        let message_wav = Cow::from(Path::new("Rustemon_Intro_Sound.wav"));
+        // load sound ahead of time
+        let mut message_sound =
+            extras::generate_sound(&audio_subsystem, &message_wav, 3.5, 0)
+                .unwrap();
 
-                message_sound.resume();
-                if poll(Duration::from_millis(3000))? {
-                    execute!(stdout, Clear(ClearType::All), MoveTo(0, 22));
-                    match read()? {
-                        _ => {
-                            message_sound.pause();
-                            break;
-                        } // allow interrupt during sound effect
+        for i in 0..100 {
+            let mut i = i;
+
+            if poll(Duration::from_millis(20))? {
+                match read()? {
+                    _ => break,
+                } // if user does anything, skip the rest
+            } else {
+                if i == 50 {
+
+                    message_sound.resume();
+                    if poll(Duration::from_millis(3000))? {
+                        execute!(stdout, Clear(ClearType::All), MoveTo(0, 22));
+                        match read()? {
+                            _ => {
+                                break 'message;
+                            } // allow interrupt during sound effect
+                        }
                     }
+                } else if i > 50 {
+                    i = 100 - i;
                 }
-            } else if i > 50 {
-                i = 100 - i;
-            }
-            let shade = format!("\x1B[38;2;{0};{0};{0}m", (i as f32 * 5.222) as usize);
-            print!("{}", &shade);
-            for line_num in 0..4 {
-                execute!(stdout, MoveTo(0, 19 + line_num))?;
-                print!("{}", &COPYRIGHT_MESSAGE[line_num as usize]);
+                let shade = format!("\x1B[38;2;{0};{0};{0}m", (i as f32 * 5.222) as usize);
+                print!("{}", &shade);
+                for line_num in 0..4 {
+                    execute!(stdout, MoveTo(0, 19 + line_num))?;
+                    print!("{}", &COPYRIGHT_MESSAGE[line_num as usize]);
+                }
             }
         }
+
     }
 
     execute!(&stdout, Clear(ClearType::All))?;
@@ -724,19 +730,15 @@ fn main() -> Result<(), io::Error> {
 
     // Play Intro Sequence ( TODO: implement skip functionality )
 
-    // has its own scope to avoid taking up SDL2 audio devices
+    // has its own scope to avoid taking up SDL2 audio devices, and to ensure proper dropping of
+    // audio stream
     {
         let mut skip = false;
 
-        let mut device = generate_sound(
-            &audio_subsystem,
-            *&&Cow::from(Path::new("Epic_Theme.wav")),
-            0.8,
-            128,
-        )
-        .unwrap()
-        .0;
+        let mut device = generate_sound(&audio_subsystem, &Cow::from(Path::new("Epic_Theme.wav")), 0.8, 0).unwrap();
         device.resume();
+
+        let song_length = device.lock().len();
 
         let mut playing_intro = true;
         let mut intro_state = 0;
@@ -763,7 +765,6 @@ fn main() -> Result<(), io::Error> {
                         playing_intro = false;
                     } else {
                         device.lock().fade_out(0.08, 0.0);
-                        continue;
                     }
                 }
             }
@@ -783,7 +784,7 @@ fn main() -> Result<(), io::Error> {
 
             // DEV CHECK -- Second evaluation checks if song is done playing
             if intro_state >= intro_ptr.len().try_into().unwrap()
-                && intro_start.millis() >= 140220u128
+                && device.lock().pos() >= song_length
             {
                 playing_intro = false;
             }
@@ -816,10 +817,11 @@ fn main() -> Result<(), io::Error> {
     execute!(io::stdout(), Show);
 
     // TESTING
-    dbg!(&player.party[0]);
-    println!("{:?}", BattleType::Fire.weaknesses());
-    println!("{}", format!("{:?}", BattleType::Fire));
-    println!("{:?}, {:?}", Pokemon[0], Pokemon[0].name());
+    //println!();
+    //dbg!(&player.party[0]);
+    //println!("{:?}", BattleType::Fire.weaknesses());
+    //println!("{}", format!("{:?}", BattleType::Fire));
+    //println!("{:?}, {:?}", Pokemon[0], Pokemon[0].name());
 
     Ok(())
 }
