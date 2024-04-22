@@ -24,6 +24,8 @@ pub struct OneWaySound {
 }
 
 //TODO: add proper read-ahead feature to fade functions to ensure smooth volume control
+// NOTE: Look-ahead must exceed provided sample size given when generating an audio device with a
+// buffer defined by a sound file 
 impl Sound {
     pub fn volume(&self) -> f32 {
         self.data[self.pos].1.clone()
@@ -36,7 +38,7 @@ impl Sound {
     }
     pub fn fade_in(&mut self, rate: f32, max: f32) {
         for p in self.pos..(self.pos+u16::MAX as usize) {
-            if p >= self.data.len()-1 { break; }
+            if p >= self.len() { break; }
             if self.data[p].1 < max {
                 self.data[p].1 += rate;
             }
@@ -48,45 +50,59 @@ impl Sound {
 
     pub fn fade_out(&mut self, rate: f32, min: f32) {
         for p in self.pos..(self.pos+u16::MAX as usize) {
-            if p >= self.data.len()-1 { break; }
+            if p >= self.len() { break; }
             if self.data[p].1 > min {
-                self.set_volume(self.data[p].1 - rate);
+                self.data[p].1 -= rate;
             }
             if self.data[p].1 < min {
-                self.set_volume(min);
+                self.data[p].1 = min;
             }
         }
     }
     // fade_in and fade_out are linear, while fade_percent is logarithmic
 
     pub fn fade_percent(&mut self, rate: f32, limit: f32) {
-        // rate can be negative, and determines whether limit                                                        // is an upper bound or lower bound
+        // rate can be negative, and determines whether limit
+        // is an upper bound or lower bound
+        //
         let rate = rate / 100.0;
-        //for p in self.pos..(self.pos+u16::MAX as usize) {
-            //if p >= self.data.len()-1 { break; }
+        for p in self.pos..(self.pos+u16::MAX as usize) {
+            if p >= self.len() { break; }
             if rate < 0.0 {
-                if self.data[self.pos].1 > limit {
-                    self.set_volume(self.data[self.pos].1 * (1.0 + rate));
+                if self.data[p].1 > limit {
+                    self.data[p].1 *= (1.0 + rate);
                 }
-                if self.data[self.pos].1 < limit {
-                    self.set_volume(limit);
+                if self.data[p].1 < limit {
+                    self.data[p].1 = limit;
                 }
-            } else {
-                if self.data[self.pos].1 < 0.1 { self.set_volume(0.1); }
-                if self.data[self.pos].1 < limit {
-                    self.set_volume(self.data[self.pos].1 * (1.0 + rate));
+            } else if rate >= 0.0 {
+                if self.data[p].1 < 0.1 {
+                    self.data[p].1 = 0.1;
                 }
-                if self.data[self.pos].1 > limit {
-                    self.set_volume(limit);
+                if self.data[p].1 < limit {
+                    self.data[p].1 *= (1.0 + rate);
+                }
+                if self.data[p].1 > limit {
+                    self.data[p].1 = limit;
                 }
             }
-        //}
+        }
     }
     pub fn restart(&mut self) {
         self.pos = 0;
     }
-    pub fn seek(&mut self, pos: usize) {
-        self.pos = pos;
+    pub fn seek(&mut self, move_pos: i32) {
+        if move_pos < 0i32 {
+            if move_pos.abs() - self.pos as i32 <= 0i32 {
+                self.pos = 0;
+            }
+            else {
+                self.pos -= move_pos.abs() as usize;
+            }
+        }
+        else {
+            self.pos += move_pos as usize;
+        }
     }
     //Updates the volume for the rest of the buffer.
     pub fn set_volume(&mut self, volume: f32) {
@@ -212,7 +228,7 @@ impl CustomQueue for Sound {
                                     format: AudioFormat::U8,
                                     channels: desired_spec.channels.unwrap(),
                                     silence: 128,
-                                    samples: u16::MAX,
+                                    samples: 256u16,
                                     size: 44_100,
                                 }
                                 ).convert(wav_append.buffer().to_vec())
@@ -225,6 +241,8 @@ impl CustomQueue for Sound {
     }
 }
 
+
+// OBSOLETE 
 pub fn generate_sound(
     subsystem: &AudioSubsystem,
     sound_path: &Cow<'static, Path>,
@@ -314,7 +332,7 @@ pub fn loop_test() -> Result<()> {
 
     let mut skip = false;
     match std::env::args().collect::<Vec<String>>().iter().nth(1) {
-        Some(x) => { println!("Argument received. Skipping first portion of test.");
+        Some(x) => { println!("Argument received. Changing test behavior.");
                      skip = true; },
         _ => {},
     }
@@ -331,7 +349,11 @@ pub fn loop_test() -> Result<()> {
         
         let audio_max_pos = queue_device.lock().len() - 1;
         while queue_device.lock().pos() < audio_max_pos {
+            use std::io::Write;
             queue_device.lock().fade_percent(10.0, 0.7);
+            print!("\x1b[s\x1b[2K Current volume (1.0 = max/normal): {:.4}\x1b[u", queue_device.lock().volume());
+            std::io::stdout().flush();
+            //queue_device.lock().fade_in(0.08, 0.7);
             sleep(Duration::from_millis(99));
         }
         

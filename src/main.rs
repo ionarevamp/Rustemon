@@ -14,6 +14,9 @@ use std::borrow::BorrowMut;
 // implement capturing of general input for real-time movement and menu management.
 //
 //
+// REGARDING TESTING/RUNNING: When testing on windows, running in a separate shell
+// via `start` seems to send an input to the window, implicitly skipping
+// the introductory message.
 
 mod animation_data;
 mod extras;
@@ -27,8 +30,6 @@ use crate::mons::*;
 use crate::moves::{Effect, PokeMove, Target};
 use crate::natures::Nature;
 use crate::types::*;
-
-use crate::Color::Rgb;
 
 use rand::prelude::*;
 use std::io::Write;
@@ -55,7 +56,7 @@ use std::path::{Path, PathBuf};
 use ratatui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout, Rect},
-    style::{Color, Style},
+    style::{Color::{self, *}, Style},
     text::Span,
     widgets::{Block, Borders, BorderType, List, ListItem, Tabs, Widget},
     Terminal,
@@ -63,6 +64,11 @@ use ratatui::{
 
 #[allow(unused_imports)]
 use crossterm::{
+    style::{
+        Color::{self as CrosstermColor, *},
+        SetForegroundColor,
+        SetBackgroundColor
+    },
     cursor::{
         DisableBlinking, EnableBlinking, Hide, MoveDown, MoveTo, MoveUp, RestorePosition,
         SavePosition, Show,
@@ -71,6 +77,9 @@ use crossterm::{
         self, poll, read, DisableMouseCapture, EnableMouseCapture, Event,
         KeyCode::{self, *},
         KeyEvent, KeyEventKind, KeyModifiers,
+        KeyboardEnhancementFlags,
+        PushKeyboardEnhancementFlags,
+        PopKeyboardEnhancementFlags
     },
     execute,
     terminal::{
@@ -310,60 +319,64 @@ pub fn main_menu(
 
     while in_menu {
         if poll(Duration::from_millis(100)).expect("IO error in menu.") {
-            let swap = beep_sounds.remove(0);
-            beep_sounds.push(swap);
-
-            for j in 1..beep_sounds.len() {
-                //beep_sounds[j].lock().set_volume(0.8);
-                beep_sounds[j].pause();
-            }
-            let len = beep_sounds.len() - 1;
-            beep_sounds[len].lock().restart();
-
             std::hint::spin_loop();
+
             match read().expect("Error reading event.") {
                 Event::Key(event) => {
-                    match event.code {
-                        KeyCode::Up => {
-                            //beep_sounds[0].lock().set_volume(2.0);
-                            beep_sounds[0].resume();
-                            if menu_select > 0 {
-                                menu_select -= 1;
-                            } else {
-                                menu_select = 2;
-                            }
-                        }
-                        KeyCode::Down => {
-                            //beep_sounds[0].lock().set_volume(2.0);
-                            beep_sounds[0].resume();
-                            if menu_select < 2 {
-                                menu_select += 1;
-                            } else {
-                                menu_select = 0;
-                            }
-                        }
-                        KeyCode::Enter => {
-                            select_sound.lock().restart();
-                            select_sound.resume();
-                            match menu_select {
-                                0 => unimplemented!(), //New Game
-                                1 => unimplemented!(), //Continue
-                                2 => {
-                                    options_state = options_menu(
-                                        &audio_subsystem,
-                                        &mut beep_sounds,
-                                        &mut select_sound,
-                                        options_state.clone(),
-                                    ); //Options
-                                }
-                                _ => panic!("`menu_select` outside of expected parameters\n"),
-                            }
-                        }
-                        KeyCode::End | Char('c') | KeyCode::Esc => in_menu = false,
-                        _ => print!(""),
+                    if event.kind != KeyEventKind::Release { // Only act on press or repeat
+                                                             //
+                    let swap = beep_sounds.remove(0);
+                    beep_sounds.push(swap);
+
+                    for j in 1..beep_sounds.len() {
+                        //beep_sounds[j].lock().set_volume(0.8);
+                        beep_sounds[j].pause();
                     }
-                }
-                _ => print!(""), // add some kind of feedback (preferably a short sound effect)
+                    let len = beep_sounds.len() - 1;
+                    beep_sounds[len].lock().restart();
+
+                          match event.code {
+                            KeyCode::Up => {
+                                //beep_sounds[0].lock().set_volume(2.0);
+                                beep_sounds[0].resume();
+                                if menu_select > 0 {
+                                    menu_select -= 1;
+                                } else {
+                                    menu_select = 2;
+                                }
+                            }
+                            KeyCode::Down => {
+                                //beep_sounds[0].lock().set_volume(2.0);
+                                beep_sounds[0].resume();
+                                if menu_select < 2 {
+                                    menu_select += 1;
+                                } else {
+                                    menu_select = 0;
+                                }
+                            }
+                            KeyCode::Enter => {
+                                select_sound.lock().restart();
+                                select_sound.resume();
+                                match menu_select {
+                                    0 => unimplemented!(), //New Game
+                                    1 => unimplemented!(), //Continue
+                                    2 => {
+                                        options_state = options_menu(
+                                            &audio_subsystem,
+                                            &mut beep_sounds,
+                                            &mut select_sound,
+                                            options_state.clone(),
+                                        ); //Options
+                                    }
+                                    _ => panic!("`menu_select` outside of expected parameters\n"),
+                                }
+                            }
+                            KeyCode::End | Char('c') | KeyCode::Esc => in_menu = false,
+                            _ => {},
+                        }
+                    }
+                },
+                _ => {}, // add some kind of feedback (preferably a short sound effect)
             }
         } else {
             // Render menu based on which item is selected
@@ -483,90 +496,95 @@ pub fn options_menu(
 
     while in_menu {
         if poll(Duration::from_millis(100)).expect("IO error in menu.") {
-            let swap = beep_sounds.remove(0);
-            beep_sounds.push(swap);
-
-            for j in 1..beep_sounds.len() {
-                //beep_sounds[j].lock().set_volume(0.8);
-                beep_sounds[j].pause();
-            }
-            let len = beep_sounds.len() - 1;
-            beep_sounds[len].lock().restart();
-
-            std::hint::spin_loop();
+                        std::hint::spin_loop();
+            
             match read() {
                 Ok(Event::Key(event)) => {
-                    match event.code {
-                        KeyCode::Up => {
-                            //beep_sounds[0].lock().set_volume(2.0);
-                            beep_sounds[0].resume();
-                            if menu_select > 0 {
-                                menu_select -= 1;
-                            } else {
-                                menu_select = 2;
-                            }
-                        }
-                        KeyCode::Down => {
-                            //beep_sounds[0].lock().set_volume(2.0);
-                            beep_sounds[0].resume();
-                            if menu_select < entries.len() - 1 {
-                                menu_select += 1;
-                            } else {
-                                menu_select = 0;
-                            }
-                        }
-                        KeyCode::Left => match menu_select {
-                            0 => {
-                                if color_index == 0 {
-                                    color_index = colors.len() - 1;
+                if event.kind != KeyEventKind::Release { // Only act on press or repeat
+                                                             //
+                    let swap = beep_sounds.remove(0);
+                    beep_sounds.push(swap);
+
+                    for j in 1..beep_sounds.len() {
+                        //beep_sounds[j].lock().set_volume(0.8);
+                        beep_sounds[j].pause();
+                    }
+                    let len = beep_sounds.len() - 1;
+                    beep_sounds[len].lock().restart();
+
+
+                        match event.code {
+                            KeyCode::Up => {
+                                //beep_sounds[0].lock().set_volume(2.0);
+                                beep_sounds[0].resume();
+                                if menu_select > 0 {
+                                    menu_select -= 1;
                                 } else {
-                                    color_index -= 1;
+                                    menu_select = 2;
                                 }
                             }
-                            1 => {
-                                if border_index == 0 {
-                                    border_index = borders.len() - 1;
-                                } else { border_index -= 1; }
-                            }
-                            2 => {
-                                if options.text_speed > 0 {
-                                    options.text_speed -= 1;
+                            KeyCode::Down => {
+                                //beep_sounds[0].lock().set_volume(2.0);
+                                beep_sounds[0].resume();
+                                if menu_select < entries.len() - 1 {
+                                    menu_select += 1;
+                                } else {
+                                    menu_select = 0;
                                 }
+                            }
+                            KeyCode::Left => match menu_select {
+                                0 => {
+                                    if color_index == 0 {
+                                        color_index = colors.len() - 1;
+                                    } else {
+                                        color_index -= 1;
+                                    }
+                                }
+                                1 => {
+                                    if border_index == 0 {
+                                        border_index = borders.len() - 1;
+                                    } else { border_index -= 1; }
+                                }
+                                2 => {
+                                    if options.text_speed > 0 {
+                                        options.text_speed -= 1;
+                                    }
+                                }
+                                _ => {}
+                            },
+                            KeyCode::Right => match menu_select {
+                                0 => {
+                                    if color_index == colors.len() - 1 {
+                                        color_index = 0;
+                                    } else {
+                                        color_index += 1;
+                                    }
+                                }
+                                1 => {
+                                    if border_index == borders.len() - 1 {
+                                        border_index = 0;
+                                    } else { border_index += 1; }
+                                }
+                                2 => {
+                                    if options.text_speed < 5 {
+                                        options.text_speed += 1;
+                                    }
+                                }
+                                _ => {}
+                            },
+                            KeyCode::Enter => {
+                                select_sound.lock().restart();
+                                select_sound.resume();
+                                sleep(Duration::from_millis(500));
+                                confirm = true;
+                                in_menu = false;
+                            }
+                            KeyCode::End | Char('c') | KeyCode::Esc => {
+                                options = options_state.clone();
+                                in_menu = false;
                             }
                             _ => {}
-                        },
-                        KeyCode::Right => match menu_select {
-                            0 => {
-                                if color_index == colors.len() - 1 {
-                                    color_index = 0;
-                                } else {
-                                    color_index += 1;
-                                }
-                            }
-                            1 => {
-                                if border_index == borders.len() - 1 {
-                                    border_index = 0;
-                                } else { border_index += 1; }
-                            }
-                            2 => {
-                                if options.text_speed < 5 {
-                                    options.text_speed += 1;
-                                }
-                            }
-                            _ => {}
-                        },
-                        KeyCode::Enter => {
-                            select_sound.lock().restart();
-                            select_sound.resume();
-                            sleep(Duration::from_millis(500));
-                            confirm = true;
-                            in_menu = false;
                         }
-                        KeyCode::End | Char('c') | KeyCode::Esc => {
-                            options = options_state.clone();
-                            in_menu = false;
-                        }
-                        _ => {}
                     }
                 }
                 _ => {} // add some kind of feedback (preferably a short sound effect)
@@ -678,45 +696,71 @@ fn main() -> Result<(), io::Error> {
     for _ in 0..terminal::size().expect("Error getting terminal size").1 {
         println!();
     }
-    execute!(stdout, MoveTo(0, 19), Clear(ClearType::All));
+    execute!(stdout, MoveTo(0, 0), Clear(ClearType::All));
     
     enable_raw_mode()?;
 
-    'message: { // keeps its own scope to properly load and drop sound data
+    { // keeps its own scope to properly load and drop sound data
         
+
         let message_wav = Cow::from(Path::new("Rustemon_Intro_Sound.wav"));
         // load sound ahead of time
         let mut message_sound =
             extras::generate_sound(&audio_subsystem, &message_wav, 3.5, 0)
                 .unwrap();
+        
+        let timeout: u64 = 17; //60 fps
+        let limit = (2000/17); //5 seconds ( accounting for msg_pause )
+        let mut msg_pause: u64 = 0;
+        let start_time = Instant::now();
 
-        for i in 0..100 {
-            let mut i = i;
+        let mut in_message = true;
+        let mut step = 0;
 
-            if poll(Duration::from_millis(20))? {
-                match read()? {
-                    _ => break,
-                } // if user does anything, skip the rest
-            } else {
-                if i == 50 {
+        while in_message {
+            if (start_time.elapsed().as_millis() as u64) >= (timeout * step as u64) + msg_pause {
+                
+                let mut i = step;
+
+                if step == (limit/2) {
+                    
+                    msg_pause += 3000;
 
                     message_sound.resume();
-                    if poll(Duration::from_millis(3000))? {
-                        execute!(stdout, Clear(ClearType::All), MoveTo(0, 22));
+                    if poll(Duration::from_millis(0))? {
+                        execute!(stdout, Clear(ClearType::All), MoveTo(0, 0));
                         match read()? {
                             _ => {
-                                break 'message;
+                                in_message = false;
                             } // allow interrupt during sound effect
                         }
                     }
-                } else if i > 50 {
-                    i = 100 - i;
+
+                } else if step > (limit/2) {
+                    i = limit - step;
                 }
-                let shade = format!("\x1B[38;2;{0};{0};{0}m", (i as f32 * 5.222) as usize);
-                print!("{}", &shade);
+
+                let shade = (i as f32 * (limit as f32/ 2.0)/ 17.0) as u8;
+                execute!(stdout, SetForegroundColor(CrosstermColor::Rgb { r: shade, g: shade, b: shade }))?;
                 for line_num in 0..4 {
-                    execute!(stdout, MoveTo(0, 19 + line_num))?;
+                    execute!(stdout, MoveTo(0, 0 + line_num))?;
                     print!("{}", &COPYRIGHT_MESSAGE[line_num as usize]);
+                }
+                
+                stdout.flush();
+                if step >= limit {
+                    in_message = false;
+                }
+
+                step += 1;
+
+            } else {
+                if poll(Duration::from_millis(0))? {
+                    match read()? {
+                        _ => {
+                            in_message = false; // any input skips
+                        }
+                    }
                 }
             }
         }
@@ -742,7 +786,7 @@ fn main() -> Result<(), io::Error> {
 
         let mut playing_intro = true;
         let mut intro_state = 0;
-        let animation_speed = 100;
+        let animation_speed = 100; // Just for now; goal is to have a 60fps animation
         let intro_ptr = &animation_data::intro::FRAME_DATA;
         let intro_start = std::time::Instant::now();
 
@@ -752,8 +796,9 @@ fn main() -> Result<(), io::Error> {
                     .lines()
                     .collect::<Vec<&str>>();
                 for i in 0..frame.len() {
-                    print!("\x1B[{};1H", 20 + i);
+                    execute!(stdout, MoveTo(0,0 + i as u16))?;
                     let _ = io::stdout().write(frame[i].as_bytes());
+                    stdout.flush()?;
                 }
 
                 let _ = io::stdout().flush();
@@ -771,9 +816,14 @@ fn main() -> Result<(), io::Error> {
 
             if poll(Duration::from_millis(0))? {
                 match read()? {
-                    _ => {
+                    Event::Key(event) => 'event: {
+                        if event.kind == KeyEventKind::Release {
+                            break 'event;
+                        }
                         skip = true;
-                    } //Any event skips
+                    }, //Any key skips, but not on release ( not doing a .kind check here catches
+                       //the key release if a key was pressed to skip the intro message )
+                    _ => {},
                 }
             }
 

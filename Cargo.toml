@@ -20,10 +20,10 @@ ratatui = "0.26.1"
 [target.'cfg(all(target_os = "android"))'.dependencies.sdl2]
 git = "https://github.com/rust-sdl2/rust-sdl2"
 default-features = false
-features = ["ttf","image","gfx","mixer"]
+features = ["ttf","image","mixer"]#,"gfx"]
 
 [target.'cfg(not(target_os = "android"))'.dependencies.sdl2]
 git = "https://github.com/rust-sdl2/rust-sdl2"
 default-features = false
-features = ["ttf","image","gfx","mixer","static-link","bundled"]
+features = ["ttf","image","mixer","static-link","gfx"]#,"bundled"]
 
