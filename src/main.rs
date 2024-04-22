@@ -54,6 +54,7 @@ use std::path::{Path, PathBuf};
 
 #[allow(unused_imports)]
 use ratatui::{
+    symbols::border::Set,
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color::{self, *}, Style},
@@ -94,7 +95,7 @@ use std::result::Result;
 #[derive(Debug, Clone)]
 struct Options {
     frame_color: Color,
-    frame_style: BorderType,
+    frame_style: ratatui::symbols::border::Set,
     text_speed: u8,
 }
 
@@ -301,7 +302,7 @@ pub fn main_menu(
 
     let mut options_state = Options {
         frame_color: Color::White,
-        frame_style: BorderType::Plain,
+        frame_style: BorderType::Plain.to_border_set(),
         text_speed: 0,
     };
 
@@ -414,7 +415,7 @@ pub fn main_menu(
                         .title("MENU (Press 'c'/End to exit)")
                         .title_bottom("--ENTER key to select--")
                         .borders(Borders::ALL)
-                        .border_type(options_state.frame_style.clone())
+                        .border_set(options_state.frame_style.clone())
                         .style(Style::default().fg(options_state.frame_color.clone())),
                 );
 
@@ -445,12 +446,14 @@ pub fn options_menu(
     let mut options = options_state.clone();
     
     let borders = vec![
-        BorderType::Plain,
-        BorderType::Rounded,
-        BorderType::Double,
-        BorderType::Thick,
-        BorderType::QuadrantInside,
-        BorderType::QuadrantOutside,
+        BorderType::Plain.to_border_set(),
+        BorderType::Rounded.to_border_set(),
+        BorderType::Double.to_border_set(),
+        BorderType::Thick.to_border_set(),
+        BorderType::QuadrantInside.to_border_set(),
+        BorderType::QuadrantOutside.to_border_set(),
+        CUSTOM_BORDER1.clone(),
+        CUSTOM_BORDER2.clone(),
     ];
 
     let colors = vec![
@@ -633,7 +636,7 @@ pub fn options_menu(
                         .title("OPTIONS (Press 'c'/End to go back)")
                         .title_bottom("--ENTER key to confirm--")
                         .borders(Borders::ALL)
-                        .border_type(borders[border_index])
+                        .border_set(borders[border_index])
                         .style(Style::default().fg(colors[color_index])),
                 );
 
@@ -656,8 +659,26 @@ pub fn options_menu(
     options
 }
 
-
-
+const CUSTOM_BORDER1: Set = Set {
+    top_left: r"\",
+    top_right: r"/",
+    bottom_left: r"/",
+    bottom_right: r"\",
+    vertical_left: r"│",
+    vertical_right: r"│",
+    horizontal_top: r"─",
+    horizontal_bottom: r"─",
+};
+const CUSTOM_BORDER2: Set = Set {
+    top_left: r"o",
+    top_right: r"o",
+    bottom_left: r"°",
+    bottom_right: r"°",
+    vertical_left: r"│",
+    vertical_right: r"│",
+    horizontal_top: r"─",
+    horizontal_bottom: r"─", 
+};
 
 
 // COPYRIGHT MESSAGE
@@ -710,7 +731,8 @@ fn main() -> Result<(), io::Error> {
                 .unwrap();
         
         let timeout: u64 = 17; //60 fps
-        let limit = (2000/17); //5 seconds ( accounting for msg_pause )
+        let pause_time = 3000;
+        let limit = ((5000 - pause_time)/timeout);
         let mut msg_pause: u64 = 0;
         let start_time = Instant::now();
 
@@ -724,7 +746,7 @@ fn main() -> Result<(), io::Error> {
 
                 if step == (limit/2) {
                     
-                    msg_pause += 3000;
+                    msg_pause += pause_time;
 
                     message_sound.resume();
                     if poll(Duration::from_millis(0))? {
