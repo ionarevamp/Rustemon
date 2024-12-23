@@ -1,0 +1,9 @@
+time cargotarget x86_64-pc-windows-gnu build --release: (USB 3.2.1 external drive)
+with `CARGO_INCREMENTAL=1`: ~25m
+with `CARGO_INCREMENTAL=0`: ~20m
+
+This is probably due to running cargo clean beforehand each time.
+
+without cargo clean (no code changes):
+incremental on: 0.51s
+incremental off: 0.75s

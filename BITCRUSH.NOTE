@@ -1,6 +1,0 @@
-This is the command used to convert the audio and produce a bitcrush-type effect,
-ultimately masking the voice making the sound.
-
-ffmpeg -i Rustemon_Intro_Sound.m4a -af acrusher=.2:.55:32:0.7:log:0.25:1:20 Rustemon_Intro_Sound.wav
-
-It may need to be adjusted for other audio files.

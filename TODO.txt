@@ -1,0 +1,27 @@
+GRAPHICS:
+  - Reimplement intro using the gfx submodule for proper graphics rendering
+  - ( Retain terminal-based portion for android testing / development as the creation of a window with the NDK doesn't work properly; and on that note, test building for android to see if using the gfx bindings would work at all )
+
+AUDIO:
+  - Complete midi writing and testing for themes/sound effects
+  - Use Dream.wav for character creation sequence
+
+FONTS:
+  - Look into using custom font to allow use of custom characters for special cases (e.g. for key items, special in-game objects, etc.)
+  - Refer to `rcd sdl2_test`, its usage of the tff submodule, and implement something like it to display text in a proper window
+  - Refer to fontforge docs and the style of the PokemonGb ttf to implement special characters as needed
+
+INPUT:
+  - Refer to the event processing in src/menu/mod.rs to only process the last given (valid) event
+  - Implement interactivity into the dialog box, as well as a border. The border should use the same one
+	as indexed by the global options
+  - Time-based input refresh used in main menu should probably be used everywhere
+
+SAVES:
+  - Basic global options saving functionality is present, but needs to be expanded as game is developed further
+  - Conditionally store/read save files in/from different locations based on OS
+
+IMPLEMENTATION NOTES/IDEAS/SPECIFICS:
+  - How to come up with consistently unique player IDs (for use in Monster struct)?
+  - Party should have a slice of &mut Monster, up to 6
+  - in src/menu/mod.rs, instead of matching on the event code THEN the selected menu option, match on the menu option THEN the event code (button press in this case)

@@ -24,12 +24,20 @@ mod mons;
 mod moves;
 mod natures;
 mod types;
+mod menu;
+mod interface;
+mod saves;
+mod area;
+mod tile_to_ascii;
 
 use crate::extras::*;
 use crate::mons::*;
 use crate::moves::{Effect, PokeMove, Target};
 use crate::natures::Nature;
 use crate::types::*;
+use crate::interface::{dialog_box};
+use crate::saves::*;
+use crate::area::*;
 
 use rand::prelude::*;
 use std::io::Write;
@@ -92,12 +100,16 @@ use crossterm::{
 };
 use std::result::Result;
 
-#[derive(Debug, Clone)]
-struct Options {
-    frame_color: Color,
-    frame_style: ratatui::symbols::border::Set,
-    text_speed: u8,
+pub fn get_term_size() -> (u16, u16) {
+    let termsize = terminal::size().unwrap();
+
+    let width = termsize.0;
+    let height = termsize.1;
+
+    (width.clone(), height.clone())
 }
+
+
 
 #[derive(Debug, Clone)]
 struct Party<'a> {
@@ -143,9 +155,73 @@ impl<'a> std::ops::IndexMut<usize> for Party<'a> {
     }
 }
 
+// TODO: move this into items.rs to simplify main file
+// mod items;
+enum Item {
+    Pokeball,
+}
+
+// TODO: maybe move this into its own file as well
+// mod stance;
+enum Stance {
+    Default,
+}
+
+enum CharacterState {
+    Running,
+    Walking,
+    Standing,
+    Biking(u8), // which bike
+    Surfing(u16), // which pokemon?
+    Holding(Item, Stance), // self-explanatory
+}
+
 struct Player<'a> {
     name: String,
     party: Party<'a>,
+    pub area: Area,
+    pub position: (u16, u16, u16), // x, y, z
+    pub animation_state: u16,
+    pub movement_state: CharacterState,
+}
+
+impl<'a> Player<'a> {
+    pub fn move_left(&mut self) {
+        if self.position.0 > 0 {
+            self.position.0 -= 1;
+        }
+    }
+    pub fn move_right(&mut self) {
+        if self.position.0 < u16::MAX {
+            self.position.0 += 1;
+        }
+    }
+    pub fn move_up(&mut self) {
+        if self.position.1 < u16::MAX {
+            self.position.1 += 1;
+        }
+    }
+    pub fn move_down(&mut self) {
+        if self.position.1 > 0 {
+            self.position.1 -= 1;
+        }
+    }
+    pub fn ascend(&mut self) {
+        if self.position.2 < u16::MAX {
+            self.position.2 += 1;
+        }
+    }
+    pub fn descend(&mut self) {
+        if self.position.2 > 0 {
+            self.position.2 -= 1;
+        }
+    }
+
+    pub fn swap_party(&mut self, first: usize, second: usize) {
+        let swap = self.party[first].clone();
+        self.party[first] = self.party[second].clone();
+        self.party[second] = swap;
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -154,17 +230,18 @@ struct Monster<'a> {
     battle_type: [BattleType; 2],
     iv: [u8; 6],
     ev: [u8; 6],
-    stats: [u8; 6],
-    curstats: [u16; 6],
-    crit_level: u8,
-    accuracy: f64,
-    lvl: u8,
-    status: Effect<'a>,
-    moves: &'static [PokeMove],
+    pub stats: [u8; 6],
+    pub curstats: [u16; 6],
+    pub crit_level: u8,
+    pub accuracy: f64,
+    pub lvl: u8,
+    pub status: Effect<'a>,
+    pub moves: &'static [PokeMove],
     owned: bool,
-    affection: i32,
+    pub affection: i32,
     nature: Nature,
-    name: String,
+    pub name: String,
+    overworld: Option<(u8, u16, u16, u16, u16)>, // direction, x, y, z, animation state
 }
 
 impl<'a> Monster<'a> {
@@ -189,6 +266,7 @@ impl<'a> Monster<'a> {
             affection: 0i32,
             nature: Nature::new(),
             name: Pokemon[dex].name(),
+            overworld: None
         })
     }
 
@@ -229,7 +307,7 @@ impl<'a> Monster<'a> {
      * Other Stats = (floor(0.01 x (2 x Base + IV + floor(0.25 x EV)) x Level) + 5) x Nature
      */
     pub fn init_stats(&mut self) {
-        let mut mon = self.borrow_mut();
+        let mon = self.borrow_mut();
         mon.accuracy = 100.0f64;
         for i in 0..mon.stats.len() {
             let base = mon.stats[i] as f64;
@@ -280,406 +358,11 @@ impl<'a> Monster<'a> {
     }
 }
 
-pub fn main_menu(
-    player_data: &mut Player,
-    audio_subsystem: &AudioSubsystem,
-    beep_wav: &Cow<'static, Path>,
-    select_wav: &Cow<'static, Path>,
-) -> io::Result<()> {
 
-    // READ OPTIONS FROM FILE
-
-    let entries = vec!["New Game", "Continue", "Options"];
-
-    let mut in_menu = true;
-    let mut menu_select = 0;
-    let mut item_selected = false;
-    let mut item_count = 0;
-
-    let mut stdout = io::stdout();
-    let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
-
-    let mut options_state = Options {
-        frame_color: Color::White,
-        frame_style: BorderType::Plain.to_border_set(),
-        text_speed: 0,
-    };
-
-    //execute!(io::stdout(), EnterAlternateScreen, EnableMouseCapture)?;
-
-    let mut beep_sounds = Vec::new();
-    let mut select_sound = extras::generate_sound(&audio_subsystem, &select_wav, 1.5, 0)
-        .unwrap();
-    for _ in 0..2 {
-        beep_sounds.push(
-            extras::generate_sound(&audio_subsystem, &beep_wav, 2.0, 0)
-                .unwrap(),
-        );
-    }
-
-    while in_menu {
-        if poll(Duration::from_millis(100)).expect("IO error in menu.") {
-            std::hint::spin_loop();
-
-            match read().expect("Error reading event.") {
-                Event::Key(event) => {
-                    if event.kind != KeyEventKind::Release { // Only act on press or repeat
-                                                             //
-                    let swap = beep_sounds.remove(0);
-                    beep_sounds.push(swap);
-
-                    for j in 1..beep_sounds.len() {
-                        //beep_sounds[j].lock().set_volume(0.8);
-                        beep_sounds[j].pause();
-                    }
-                    let len = beep_sounds.len() - 1;
-                    beep_sounds[len].lock().restart();
-
-                          match event.code {
-                            KeyCode::Up => {
-                                //beep_sounds[0].lock().set_volume(2.0);
-                                beep_sounds[0].resume();
-                                if menu_select > 0 {
-                                    menu_select -= 1;
-                                } else {
-                                    menu_select = 2;
-                                }
-                            }
-                            KeyCode::Down => {
-                                //beep_sounds[0].lock().set_volume(2.0);
-                                beep_sounds[0].resume();
-                                if menu_select < 2 {
-                                    menu_select += 1;
-                                } else {
-                                    menu_select = 0;
-                                }
-                            }
-                            KeyCode::Enter => {
-                                select_sound.lock().restart();
-                                select_sound.resume();
-                                match menu_select {
-                                    0 => unimplemented!(), //New Game
-                                    1 => unimplemented!(), //Continue
-                                    2 => {
-                                        options_state = options_menu(
-                                            &audio_subsystem,
-                                            &mut beep_sounds,
-                                            &mut select_sound,
-                                            options_state.clone(),
-                                        ); //Options
-                                    }
-                                    _ => panic!("`menu_select` outside of expected parameters\n"),
-                                }
-                            }
-                            KeyCode::End | Char('c') | KeyCode::Esc => in_menu = false,
-                            _ => {},
-                        }
-                    }
-                },
-                _ => {}, // add some kind of feedback (preferably a short sound effect)
-            }
-        } else {
-            // Render menu based on which item is selected
-            let menu = List::new(
-                entries
-                    .clone()
-                    .into_iter()
-                    .map(|item| {
-                        if menu_select == item_count {
-                            item_count += 1;
-                            ListItem::new(">".to_owned() + item)
-                                .style(Style::default().fg(Color::Gray))
-                        } else {
-                            item_count += 1;
-                            ListItem::new(" ".to_owned() + item)
-                                .style(Style::default().fg(Color::White))
-                        }
-                    })
-                    .collect::<Vec<_>>(),
-            );
-            terminal.draw(|f| {
-                let chunks = Layout::default()
-                    .direction(Direction::Horizontal)
-                    .margin(1)
-                    .constraints([Constraint::Percentage(40), Constraint::Percentage(50)].as_ref())
-                    .split(Rect {
-                        x: 0,
-                        y: 0,
-                        width: f.size().width,
-                        height: (entries.len() + 3 + 2) as u16, // plus 3 to account for margins, then another 2 to add whitespace
-                    });
-
-                let tabs = menu.block(
-                    Block::default()
-                        .title("MENU (Press 'c'/End to exit)")
-                        .title_bottom("--ENTER key to select--")
-                        .borders(Borders::ALL)
-                        .border_set(options_state.frame_style.clone())
-                        .style(Style::default().fg(options_state.frame_color.clone())),
-                );
-
-                f.render_widget(tabs, chunks[0]);
-            })?;
-        }
-
-        item_count = 0;
-    }
-
-    //execute!(io::stdout(), LeaveAlternateScreen, DisableMouseCapture)?;
-
-    // SAVE OPTIONS TO FILE
-
-    Ok(())
-}
-
-pub fn options_menu(
-    audio: &AudioSubsystem,
-    beep_sounds: &mut Vec<AudioDevice<Sound>>,
-    select_sound: &mut AudioDevice<Sound>,
-    options_state: Options,
-) -> Options {
-    //TODO: Write option settings to file
-
-    execute!(io::stdout(), EnterAlternateScreen).unwrap();
-
-    let mut options = options_state.clone();
-    
-    let borders = vec![
-        BorderType::Plain.to_border_set(),
-        BorderType::Rounded.to_border_set(),
-        BorderType::Double.to_border_set(),
-        BorderType::Thick.to_border_set(),
-        BorderType::QuadrantInside.to_border_set(),
-        BorderType::QuadrantOutside.to_border_set(),
-        CUSTOM_BORDER1.clone(),
-        CUSTOM_BORDER2.clone(),
-    ];
-
-    let colors = vec![
-        Color::Black,
-        Color::DarkGray,
-        Color::Red,
-        Color::LightRed,
-        Color::Green,
-        Color::LightGreen,
-        Color::Yellow,
-        Color::LightYellow,
-        Color::Blue,
-        Color::LightBlue,
-        Color::Magenta,
-        Color::LightMagenta,
-        Color::Cyan,
-        Color::LightCyan,
-        Color::White,
-        Color::Gray,
-    ];
-
-    let custom_colors = vec![
-        Rgb(240, 190, 190), //Pink
-    ];
-
-    let entries = vec!["Frame color", "Frame style", "Text speed"];
-
-    let mut in_menu = true;
-    let mut confirm = false;
-
-    let mut menu_select = 0;
-    let mut item_selected = false;
-    let mut item_count = 0;
-
-    let mut color_index = 14;
-    let mut border_index = 0;
-
-    let mut stdout = io::stdout();
-    let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend).unwrap();
-
-    execute!(io::stdout(), EnterAlternateScreen).unwrap();
-
-    while in_menu {
-        if poll(Duration::from_millis(100)).expect("IO error in menu.") {
-                        std::hint::spin_loop();
-            
-            match read() {
-                Ok(Event::Key(event)) => {
-                if event.kind != KeyEventKind::Release { // Only act on press or repeat
-                                                             //
-                    let swap = beep_sounds.remove(0);
-                    beep_sounds.push(swap);
-
-                    for j in 1..beep_sounds.len() {
-                        //beep_sounds[j].lock().set_volume(0.8);
-                        beep_sounds[j].pause();
-                    }
-                    let len = beep_sounds.len() - 1;
-                    beep_sounds[len].lock().restart();
-
-
-                        match event.code {
-                            KeyCode::Up => {
-                                //beep_sounds[0].lock().set_volume(2.0);
-                                beep_sounds[0].resume();
-                                if menu_select > 0 {
-                                    menu_select -= 1;
-                                } else {
-                                    menu_select = 2;
-                                }
-                            }
-                            KeyCode::Down => {
-                                //beep_sounds[0].lock().set_volume(2.0);
-                                beep_sounds[0].resume();
-                                if menu_select < entries.len() - 1 {
-                                    menu_select += 1;
-                                } else {
-                                    menu_select = 0;
-                                }
-                            }
-                            KeyCode::Left => match menu_select {
-                                0 => {
-                                    if color_index == 0 {
-                                        color_index = colors.len() - 1;
-                                    } else {
-                                        color_index -= 1;
-                                    }
-                                }
-                                1 => {
-                                    if border_index == 0 {
-                                        border_index = borders.len() - 1;
-                                    } else { border_index -= 1; }
-                                }
-                                2 => {
-                                    if options.text_speed > 0 {
-                                        options.text_speed -= 1;
-                                    }
-                                }
-                                _ => {}
-                            },
-                            KeyCode::Right => match menu_select {
-                                0 => {
-                                    if color_index == colors.len() - 1 {
-                                        color_index = 0;
-                                    } else {
-                                        color_index += 1;
-                                    }
-                                }
-                                1 => {
-                                    if border_index == borders.len() - 1 {
-                                        border_index = 0;
-                                    } else { border_index += 1; }
-                                }
-                                2 => {
-                                    if options.text_speed < 5 {
-                                        options.text_speed += 1;
-                                    }
-                                }
-                                _ => {}
-                            },
-                            KeyCode::Enter => {
-                                select_sound.lock().restart();
-                                select_sound.resume();
-                                sleep(Duration::from_millis(500));
-                                confirm = true;
-                                in_menu = false;
-                            }
-                            KeyCode::End | Char('c') | KeyCode::Esc => {
-                                options = options_state.clone();
-                                in_menu = false;
-                            }
-                            _ => {}
-                        }
-                    }
-                }
-                _ => {} // add some kind of feedback (preferably a short sound effect)
-            }
-        }
-        // Render menu based on which item is selected
-        let menu = List::new(
-            entries
-                .clone()
-                .into_iter()
-                .map(|item| {
-                    let state = match item_count {
-                        0 => format!("{:?}", colors[color_index]),
-                        1 => format!("{:?}", borders[border_index]),
-                        2 => format!("{:?}", options.text_speed),
-                        _ => "Error: `item_count` out of bounds.".to_string(),
-                    };
-
-                    if menu_select == item_count {
-                        item_count += 1;
-                        ListItem::new(">".to_owned() + item + " : " + state.as_str())
-                            .style(Style::default().fg(Color::Gray))
-                    } else {
-                        item_count += 1;
-                        ListItem::new(" ".to_owned() + item + " : " + state.as_str())
-                            .style(Style::default().fg(Color::White))
-                    }
-                })
-                .collect::<Vec<_>>(),
-        );
-        terminal
-            .draw(|f| {
-                let chunks = Layout::default()
-                    .direction(Direction::Horizontal)
-                    .margin(1)
-                    .constraints([Constraint::Percentage(70), Constraint::Percentage(30)].as_ref())
-                    .split(Rect {
-                        x: 0,
-                        y: 0,
-                        width: f.size().width,
-                        height: (entries.len() + 3 + 2) as u16, // plus 3 to account for margins, then another 2 to add whitespace
-                    });
-
-                let tabs = menu.block(
-                    Block::default()
-                        .title("OPTIONS (Press 'c'/End to go back)")
-                        .title_bottom("--ENTER key to confirm--")
-                        .borders(Borders::ALL)
-                        .border_set(borders[border_index])
-                        .style(Style::default().fg(colors[color_index])),
-                );
-
-                f.render_widget(tabs, chunks[0]);
-            })
-            .unwrap();
-
-        item_count = 0;
-    }
-
-    execute!(io::stdout(), LeaveAlternateScreen).unwrap();
-
-    if confirm {
-        options = Options {
-            frame_color: colors[color_index],
-            frame_style: borders[border_index],
-            text_speed: options.text_speed,
-        };
-    }
-    options
-}
-
-const CUSTOM_BORDER1: Set = Set {
-    top_left: r"\",
-    top_right: r"/",
-    bottom_left: r"/",
-    bottom_right: r"\",
-    vertical_left: r"│",
-    vertical_right: r"│",
-    horizontal_top: r"─",
-    horizontal_bottom: r"─",
-};
-const CUSTOM_BORDER2: Set = Set {
-    top_left: r"o",
-    top_right: r"o",
-    bottom_left: r"°",
-    bottom_right: r"°",
-    vertical_left: r"│",
-    vertical_right: r"│",
-    horizontal_top: r"─",
-    horizontal_bottom: r"─", 
-};
-
+// DIMENSIONS (PROGRAM NEEDS AT LEAST 80x24 characters)
+pub const TERM_WIDTH: usize = 80;
+pub const TERM_HEIGHT: usize = 24;
+pub const RIGHT_POINTING_TRIANGLE: &str = "▶";
 
 // COPYRIGHT MESSAGE
 const COPYRIGHT_MESSAGE: [&str; 4] = [
@@ -690,6 +373,9 @@ const COPYRIGHT_MESSAGE: [&str; 4] = [
 ];
 
 fn main() -> Result<(), io::Error> {
+    
+    let mut stdout = io::stdout();
+
     //INITIALIZE
     println!("Loading...");
     let sdl_context = sdl2::init().expect("Unable to initialize SDL2");
@@ -698,7 +384,22 @@ fn main() -> Result<(), io::Error> {
         .audio()
         .expect("Unable to initialize audio subsystem");
     println!("Audio subsystem initialized.");
+
+    // load options if present
+    let mut global_options = saves::read_save().unwrap();
     
+    /*
+    // TEST
+        execute!(&stdout, Clear(ClearType::All), MoveTo(1,1));
+        dialog_box(&mut stdout, &global_options, "This is a test dialog box, with a looooooooooooooooooooooooooong sentence!! ... And this is a second sentence. Yeaaaaaaaah.", "Yo mama");
+        sleep(Duration::from_millis(1000));
+
+        execute!(&stdout, Clear(ClearType::All), MoveTo(1,1));
+        dialog_box(&mut stdout, &global_options, "LONGWORDLONGWORDLONGWORDLONGWORDLONGWORDLONGWORDLONGWORDLONGWORDLONGWORDLONGWORDLONGWORDLONGWORDLONGWORDLONGWORDLONGWORDLONGWORDLONGWORDLONGWORDLONGWORDLONGWORDLONGWORDLONGWORDLONGWORDLONGWORDLONGWORDLONGWORDLONGWORDLONGWORDLONGWORDLONGWORDLONGWORDLONGWORDLONGWORDLONGWORDLONGWORDLONGWORDLONGWORD", "DEV");
+        sleep(Duration::from_millis(1000));
+    //
+    */
+
     let beep_wav = Cow::from(Path::new("shortbeep.wav"));
     let select_wav = Cow::from(Path::new("select.wav"));
 
@@ -707,8 +408,7 @@ fn main() -> Result<(), io::Error> {
     //    let mut beep_sound = extras::generate_sound(&audio_subsystem, &beep_wav, 0.7, 0)
     //        .expect("Unable to create device.").0;
 
-    let mut stdout = io::stdout();
-    execute!(stdout, Hide);
+    execute!(&stdout, Hide)?;
 
     // KEEP THIS HERE FOR LEGAL REASONS!!!
     // ( Copyright message, stylized )
@@ -717,7 +417,7 @@ fn main() -> Result<(), io::Error> {
     for _ in 0..terminal::size().expect("Error getting terminal size").1 {
         println!();
     }
-    execute!(stdout, MoveTo(0, 0), Clear(ClearType::All));
+    execute!(&stdout, MoveTo(0, 0), Clear(ClearType::All))?;
     
     enable_raw_mode()?;
 
@@ -726,13 +426,13 @@ fn main() -> Result<(), io::Error> {
 
         let message_wav = Cow::from(Path::new("Rustemon_Intro_Sound.wav"));
         // load sound ahead of time
-        let mut message_sound =
-            extras::generate_sound(&audio_subsystem, &message_wav, 3.5, 0)
+        let message_sound =
+            extras::generate_sound(&audio_subsystem, &message_wav, 3.5 * global_options.master_volume, 0)
                 .unwrap();
         
         let timeout: u64 = 17; //60 fps
         let pause_time = 3000;
-        let limit = ((5000 - pause_time)/timeout);
+        let limit = (5000 - pause_time)/timeout;
         let mut msg_pause: u64 = 0;
         let start_time = Instant::now();
 
@@ -740,22 +440,20 @@ fn main() -> Result<(), io::Error> {
         let mut step = 0;
 
         while in_message {
-            if (start_time.elapsed().as_millis() as u64) >= (timeout * step as u64) + msg_pause {
+            if (start_time.elapsed().as_millis() as u64) >= (timeout * step) + msg_pause {
                 
                 let mut i = step;
 
+                #[allow(clippy::comparison_chain)]
                 if step == (limit/2) {
                     
                     msg_pause += pause_time;
 
                     message_sound.resume();
                     if poll(Duration::from_millis(0))? {
-                        execute!(stdout, Clear(ClearType::All), MoveTo(0, 0));
-                        match read()? {
-                            _ => {
-                                in_message = false;
-                            } // allow interrupt during sound effect
-                        }
+                        execute!(stdout, Clear(ClearType::All), MoveTo(0, 0))?;
+                            in_message = false;
+                            // allow interrupt during sound effect
                     }
 
                 } else if step > (limit/2) {
@@ -765,11 +463,11 @@ fn main() -> Result<(), io::Error> {
                 let shade = (i as f32 * (limit as f32/ 2.0)/ 17.0) as u8;
                 execute!(stdout, SetForegroundColor(CrosstermColor::Rgb { r: shade, g: shade, b: shade }))?;
                 for line_num in 0..4 {
-                    execute!(stdout, MoveTo(0, 0 + line_num))?;
+                    execute!(stdout, MoveTo(0, line_num))?;
                     print!("{}", &COPYRIGHT_MESSAGE[line_num as usize]);
                 }
                 
-                stdout.flush();
+                stdout.flush()?;
                 if step >= limit {
                     in_message = false;
                 }
@@ -777,11 +475,12 @@ fn main() -> Result<(), io::Error> {
                 step += 1;
 
             } else {
+                #[allow(clippy::collapsible_if)]
                 if poll(Duration::from_millis(0))? {
-                    match read()? {
-                        _ => {
-                            in_message = false; // any input skips
-                        }
+                    if let Ok(Event::Key(event)) = read() {
+                        if event.kind == KeyEventKind::Press {
+                            in_message = false;
+                        } // any keypress skips
                     }
                 }
             }
@@ -801,7 +500,7 @@ fn main() -> Result<(), io::Error> {
     {
         let mut skip = false;
 
-        let mut device = generate_sound(&audio_subsystem, &Cow::from(Path::new("Epic_Theme.wav")), 0.8, 0).unwrap();
+        let mut device = generate_sound(&audio_subsystem, &Cow::from(Path::new("Epic_Theme.wav")), 0.8 * global_options.master_volume, 0).unwrap();
         device.resume();
 
         let song_length = device.lock().len();
@@ -814,12 +513,12 @@ fn main() -> Result<(), io::Error> {
 
         while playing_intro {
             if intro_start.elapsed().as_millis() as usize >= (animation_speed * intro_state) {
-                let frame = intro_ptr[intro_state as usize]
+                let frame = intro_ptr[intro_state]
                     .lines()
                     .collect::<Vec<&str>>();
-                for i in 0..frame.len() {
+                for (i, cell) in frame.iter().enumerate() {
                     execute!(stdout, MoveTo(0,0 + i as u16))?;
-                    let _ = io::stdout().write(frame[i].as_bytes());
+                    let _ = io::stdout().write(cell.as_bytes());
                     stdout.flush()?;
                 }
 
@@ -828,7 +527,7 @@ fn main() -> Result<(), io::Error> {
                 intro_state += 1;
 
                 if skip {
-                    if device.lock().volume() <= 0.01f32 {
+                    if device.lock().volume() <= 0.015f32 {
                         playing_intro = false;
                     } else {
                         device.lock().fade_out(0.08, 0.0);
@@ -837,15 +536,10 @@ fn main() -> Result<(), io::Error> {
             }
 
             if poll(Duration::from_millis(0))? {
-                match read()? {
-                    Event::Key(event) => 'event: {
-                        if event.kind == KeyEventKind::Release {
-                            break 'event;
-                        }
+                if let Ok(Event::Key(event)) = read() {
+                    if event.kind == KeyEventKind::Press {
                         skip = true;
-                    }, //Any key skips, but not on release ( not doing a .kind check here catches
-                       //the key release if a key was pressed to skip the intro message )
-                    _ => {},
+                    } // any keypress skips
                 }
             }
 
@@ -855,38 +549,43 @@ fn main() -> Result<(), io::Error> {
             }
 
             // DEV CHECK -- Second evaluation checks if song is done playing
-            if intro_state >= intro_ptr.len().try_into().unwrap()
-                && device.lock().pos() >= song_length
+            if intro_state >= intro_ptr.len() - 1
+                || device.lock().pos() >= song_length
             {
                 playing_intro = false;
             }
         }
 
-        execute!(&stdout, Clear(ClearType::All));
+        let _ = execute!(&stdout, Clear(ClearType::All));
 
         // Intro sequence scope ends here
     }
 
     // MAIN LOGIC
 
-    //TODO: Load saved player data if present
     //Initialize player data
     let mut player = Player {
         name: "DEV".to_string(),
         party: Party::new(),
+        area: Area::TestZone,
+        animation_state: 0,
+        position: (10, 10, 0),
+        movement_state: CharacterState::Standing,
     };
     player.party[0] = Monster::new(150, 0u8);
+
+    
 
     // Menu
 
     {
-        main_menu(&mut player, &audio_subsystem, &beep_wav, &select_wav);
-        disable_raw_mode();
+        global_options = menu::main_menu(&mut player, &audio_subsystem, &beep_wav, &select_wav, global_options).unwrap();
+        disable_raw_mode()?;
     }
 
-    disable_raw_mode()?;
 
-    execute!(io::stdout(), Show);
+    disable_raw_mode()?;
+    execute!(io::stdout(), Show)?;
 
     // TESTING
     //println!();

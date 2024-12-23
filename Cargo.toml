@@ -14,10 +14,11 @@ panic = "abort"
 
 [dependencies]
 crossterm = "0.27.0"
+image = "0.24"
 rand = "0.8.5"
 ratatui = "0.26.1"
 
-[target.'cfg(all(target_os = "android"))'.dependencies.sdl2]
+[target.'cfg(any(target_os = "android"))'.dependencies.sdl2]
 git = "https://github.com/rust-sdl2/rust-sdl2"
 default-features = false
 features = ["ttf","image","mixer"]#,"gfx"]
@@ -25,5 +26,5 @@ features = ["ttf","image","mixer"]#,"gfx"]
 [target.'cfg(not(target_os = "android"))'.dependencies.sdl2]
 git = "https://github.com/rust-sdl2/rust-sdl2"
 default-features = false
-features = ["ttf","image","mixer","static-link","gfx"]#,"bundled"]
+features = ["ttf","mixer"]#,"image","static-link","gfx","bundled"]
 

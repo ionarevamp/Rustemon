@@ -10,7 +10,15 @@ use std::io::prelude::*;
 use std::iter::Iterator;
 use std::*;
 
+
 fn main() {
+    // Only run if files have changed
+    println!(r#"cargo::rerun-if-changed=build.rs"#);
+    println!(r#"cwrgo::rerun-if-changed=realnames.txt"#);
+    println!(r#"cwrgo::rerun-if-changed=enumnames.txt"#);
+    println!(r#"cwrgo::rerun-if-changed=types.txt"#);
+    println!(r#"cwrgo::rerun-if-changed=stats.txt"#);
+
     // real names in English
     let mut real_names = fs::read_to_string("realnames.txt")
         .unwrap_or_else(|_| {
@@ -145,7 +153,7 @@ fn main() {
     }
     code.push_str("];\n\n");
 
-//    penum.write(code.as_bytes());
+//    penum.write_all(code.as_bytes());
 //    code = String::new();
 
     // impl block
@@ -215,7 +223,7 @@ fn main() {
     // close impl
     code.push_str("}\n\n");
 
-//    pimpl.write(code.as_bytes());
+//    pimpl.write_all(code.as_bytes());
 //    code = String::new();
 
     // get Pokemon from dex number (made obsolete by `pub const Pokemon: [Pokemon; 1026] = ...`
@@ -231,11 +239,11 @@ fn main() {
     code.push_str("\t\t_ => { println!(\"Invalid dex number. \"); Pokemon::Bulbasaur },\n");
     code.push_str("\t}\n}\n\n");
 
- //   pfuncs.write(code.as_bytes());
+ //   pfuncs.write_all(code.as_bytes());
     
     let mut source_file = fs::File::create("src/mons.rs").expect("Unable to create `src/mons.rs`.");
     source_file.set_len(0);
-    source_file.write(code.as_bytes());
+    source_file.write_all(code.as_bytes());
 
     println!("End of code generation.");
 

@@ -10,10 +10,14 @@ use std::path::{Path, PathBuf};
 use std::thread::{self, *};
 use std::time::{Duration, Instant};
 
+//DEBUG
+use std::fs::File;
+use std::fs::OpenOptions;
+use std::io::Write;
+//END DEBUG
 
-// TODO: change `data` to be of type `Vec<(u8,f32)>` (preferably aligned)
-// TODO: ^^ also change fade funcs
-#[repr(Rust, align(128))]
+// TODO: figure out a more efficient way to set volume for a given portion of audio
+#[repr(C)]
 pub struct Sound {
     data: Vec<(u8, f32)>,
     //volume: f32,
@@ -28,7 +32,7 @@ pub struct OneWaySound {
 // buffer defined by a sound file 
 impl Sound {
     pub fn volume(&self) -> f32 {
-        self.data[self.pos].1.clone()
+        self.data[self.pos].1
     }
     pub fn pos(&self) -> usize {
         self.pos
@@ -61,16 +65,28 @@ impl Sound {
     }
     // fade_in and fade_out are linear, while fade_percent is logarithmic
 
-    pub fn fade_percent(&mut self, rate: f32, limit: f32) {
+    pub fn fade_percent(&mut self, rate: f32, limit: f32) -> String {
         // rate can be negative, and determines whether limit
         // is an upper bound or lower bound
         //
+        let mut log = String::new();
+
         let rate = rate / 100.0;
         for p in self.pos..(self.pos+u16::MAX as usize) {
-            if p >= self.len() { break; }
+            if p >= self.len() {
+                let _ = log.push_str(format!("Encountered maximum file size at iteration {}, breaking loop.\n", p).as_str());
+                break;
+            }
+            else if p == self.pos+u16::MAX as usize {
+                for pp in p..self.len() {
+                    self.data[pp].1 = limit;
+                    
+                    let _ = log.push_str("Encountered maximum iteration, setting volume to limit.\n");
+                }
+            }
             if rate < 0.0 {
                 if self.data[p].1 > limit {
-                    self.data[p].1 *= (1.0 + rate);
+                    self.data[p].1 *= 1.0 + rate;
                 }
                 if self.data[p].1 < limit {
                     self.data[p].1 = limit;
@@ -80,13 +96,17 @@ impl Sound {
                     self.data[p].1 = 0.1;
                 }
                 if self.data[p].1 < limit {
-                    self.data[p].1 *= (1.0 + rate);
+                    self.data[p].1 *= 1.0 + rate;
+                    let _ = log.push_str(format!("Changing volume to {}\n", self.data[p].1).as_str());
                 }
                 if self.data[p].1 > limit {
+                    let _ = log.push_str(format!("Setting volume to limit from {}\n", self.data[p].1).as_str());
                     self.data[p].1 = limit;
                 }
             }
         }
+
+        log
     }
     pub fn restart(&mut self) {
         self.pos = 0;
@@ -106,8 +126,8 @@ impl Sound {
     }
     //Updates the volume for the rest of the buffer.
     pub fn set_volume(&mut self, volume: f32) {
-        let len = self.data.len()-1;
-        for p in self.pos..=len {
+        let len = self.data.len();
+        for p in self.pos..len {
             self.data[p].1 = volume;
         }
     }
@@ -142,6 +162,9 @@ impl AudioCallback for Sound {
                 .get(self.pos)
                 .unwrap_or(&(128,0.0))
                 );
+
+            //let volume = self.volume;
+
             let scaled_signed_float =
                 (pre_scale.0 as f32 - 128.0) * pre_scale.1;
             let mut scaled =
@@ -339,7 +362,8 @@ pub fn loop_test() -> Result<()> {
 
     if skip {
 
-        
+        let mut log = File::create(Path::new("sound.log")).unwrap();
+        let mut log_string = String::new();
         let mut queue_device = generate_sound(&audio_subsystem, &path4, 0.0, 0).unwrap();
         for _ in 0..1 {
             queue_device.lock().queue(&path4, 0.0);
@@ -349,14 +373,15 @@ pub fn loop_test() -> Result<()> {
         
         let audio_max_pos = queue_device.lock().len() - 1;
         while queue_device.lock().pos() < audio_max_pos {
+            log_string.push_str(queue_device.lock().fade_percent(10.0, 0.7).as_str());
             use std::io::Write;
-            queue_device.lock().fade_percent(10.0, 0.7);
             print!("\x1b[s\x1b[2K Current volume (1.0 = max/normal): {:.4}\x1b[u", queue_device.lock().volume());
             std::io::stdout().flush();
             //queue_device.lock().fade_in(0.08, 0.7);
             sleep(Duration::from_millis(99));
         }
         
+        let _ = log.write(log_string.as_bytes());
 
     }
 

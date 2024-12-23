@@ -3,6 +3,10 @@ rustflags = [
     "-C", "linker=gcc",
 	"-L", "/usr/lib",
 ]
+[target.'cfg(all(target_os = "windows"))']
+rustflags = [
+	"-C", "target-feature=+crt-static",
+]
 
 [target.'cfg(target_abi = "musl")']
 rustflags = [
